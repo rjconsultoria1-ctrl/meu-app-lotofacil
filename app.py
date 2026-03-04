@@ -22,12 +22,6 @@ else:
     st.sidebar.success("✅ Acesso Liberado!")
 
 st.subheader("📁 Passo 1: Base de Dados")
-
-# Lógica do Banco de Dados Automático
-df = None
-col1, col2 = st.columns([2, 1])  # <-- Essa linha cria o col1 e precisa existir!
-
-st.subheader("📁 Passo 1: Base de Dados")
     
     # Lógica do Banco de Dados Automático
 df = None
