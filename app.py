@@ -22,37 +22,58 @@ else:
     st.sidebar.success("✅ Acesso Liberado!")
 
 st.subheader("📁 Passo 1: Base de Dados")
-    
-    # Lógica do Banco de Dados Automático
+
+# Lógica do Banco de Dados Automático
 df = None
 col1, col2 = st.columns([2, 1])
-    
+
 with col1:
-        if os.path.exists(ARQUIVO_BASE):
+    if os.path.exists(ARQUIVO_BASE):
+        try:
+            # Tentativa 1: Sotaque da Internet + Separador Brasil
+            df = pd.read_csv(ARQUIVO_BASE, sep=";", encoding="utf-8")
+        except Exception:
             try:
-                # Tentativa 1: O padrão do Excel Brasileiro (Como a sua planilha está agora)
-                df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='latin-1')
+                # Tentativa 2: Sotaque Windows + Separador Brasil (O Excel Clássico)
+                df = pd.read_csv(ARQUIVO_BASE, sep=";", encoding="latin-1")
             except Exception:
-                # Tentativa 2: O padrão Universal (Como o nosso app vai salvar os próximos)
-                df = pd.read_csv(ARQUIVO_BASE, sep=',', encoding='utf-8')
-                
-            st.info(f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados.")
-            
+                try:
+                    # Tentativa 3: Sotaque da Internet + Separador Americano (O Universal)
+                    df = pd.read_csv(ARQUIVO_BASE, sep=",", encoding="utf-8")
+                except Exception:
+                    # Tentativa 4: Se tudo der errado, o último recurso
+                    df = pd.read_csv(ARQUIVO_BASE, sep=",", encoding="latin-1")
+
+        st.info(
+            f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados."
+        )
+
 with col2:
-        with st.expander("🔄 Subir uma nova planilha manual"):
-            arquivo_upado = st.file_uploader("Substituir base de dados", type=["csv", "xlsx"])
-            if arquivo_upado is not None:
-                if arquivo_upado.name.endswith('.csv'):
+    with st.expander("🔄 Subir uma nova planilha manual"):
+        arquivo_upado = st.file_uploader(
+            "Substituir base de dados", type=["csv", "xlsx"]
+        )
+        if arquivo_upado is not None:
+            if arquivo_upado.name.endswith(".csv"):
+                try:
+                    df = pd.read_csv(arquivo_upado, sep=";", encoding="utf-8")
+                except Exception:
+                    arquivo_upado.seek(0)
                     try:
-                        df = pd.read_csv(arquivo_upado, sep=';', encoding='latin-1')
+                        df = pd.read_csv(arquivo_upado, sep=";", encoding="latin-1")
                     except Exception:
                         arquivo_upado.seek(0)
-                        df = pd.read_csv(arquivo_upado, sep=',', encoding='utf-8')
-                else:
-                    df = pd.read_excel(arquivo_upado)
-                
-                df.to_csv(ARQUIVO_BASE, index=False)
-                st.success("Nova base salva no sistema! Recarregue a página.")
+                        try:
+                            df = pd.read_csv(arquivo_upado, sep=",", encoding="utf-8")
+                        except Exception:
+                            arquivo_upado.seek(0)
+                            df = pd.read_csv(arquivo_upado, sep=",", encoding="latin-1")
+            else:
+                df = pd.read_excel(arquivo_upado)
+
+            # O sistema sempre salva limpo no padrão universal para evitar erros no futuro
+            df.to_csv(ARQUIVO_BASE, index=False)
+            st.success("Nova base salva no sistema! Recarregue a página.")
 
 if df is not None:
     st.subheader("🚀 Passo 2: Motores de Análise")
