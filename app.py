@@ -6,7 +6,7 @@ import itertools
 st.set_page_config(page_title="Gerador Lotofácil VIP", page_icon="💎", layout="wide")
 
 st.title("💎 Meu Gerador Lotofácil VIP - Múltiplas Estratégias")
-st.write("Análise avançada dividida em 3 estratégias estatísticas distintas.")
+st.write("Análise avançada com 4 estratégias estatísticas e rastreamento de acertos.")
 
 st.sidebar.title("🔐 Área Restrita")
 senha_digitada = st.sidebar.text_input("Digite a senha de acesso:", type="password")
@@ -31,16 +31,18 @@ else:
                 
             st.subheader("🚀 Passo 2: Motores de Análise")
             
-            if st.button("⚡ Processar as 3 Estratégias"):
-                with st.spinner('Rodando 3 algoritmos simultâneos em 2 milhões de combinações. Aguarde...'):
+            if st.button("⚡ Processar as 4 Estratégias"):
+                with st.spinner('Rodando 4 algoritmos simultâneos e aplicando Engenharia Reversa. Aguarde...'):
                     
                     dezenas_cols = [col for col in df.columns if 'Dezena' in col]
-                    if not dezenas_cols: 
-                        dezenas_cols = df.columns[-15:]
+                    if not dezenas_cols: dezenas_cols = df.columns[-15:]
                         
                     past_draws = [frozenset(row) for row in df[dezenas_cols].values]
                     all_numbers = df[dezenas_cols].values.flatten()
                     counts = Counter(all_numbers)
+                    
+                    # Pegando o último sorteio para a Engenharia Reversa
+                    ultimo_sorteio = past_draws[-1]
                     
                     invalid_16 = set()
                     todas_dezenas = set(range(1, 26))
@@ -52,9 +54,7 @@ else:
                     moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
                     fibonacci = {1, 2, 3, 5, 8, 13, 21}
 
-                    lista_geral = []
-                    lista_frias = []
-                    lista_diamante = []
+                    lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
                     
                     for comb in itertools.combinations(range(1, 26), 16):
                         f_comb = frozenset(comb)
@@ -67,19 +67,20 @@ else:
                             qtd_moldura = sum(1 for d in f_comb if d in moldura)
                             qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
                             soma_total = sum(f_comb)
+                            repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
                             
-                            # Estratégia Diamante
+                            # 1. Estratégia Diamante
                             if (impares == 8 or impares == 9) and (5 <= qtd_primos <= 6) and (10 <= qtd_moldura <= 11) and (4 <= qtd_fibo <= 5) and (195 <= soma_total <= 220):
                                 lista_diamante.append((freq_soma, sorted(list(f_comb))))
 
-                            # Estratégia Frias
+                            # 2. Estratégia Frias
                             score_frias = (50000 - freq_soma) / 100.0
                             if impares == 8 and pares == 8: score_frias += 50
                             elif impares == 9 and pares == 7: score_frias += 40
                             if 5 <= qtd_primos <= 7: score_frias += 30
                             lista_frias.append((score_frias, sorted(list(f_comb))))
 
-                            # Estratégia Geral
+                            # 3. Estratégia Geral (Motor Clássico)
                             score_geral = freq_soma / 100.0
                             if impares == 8 and pares == 8: score_geral += 50
                             elif impares == 9 and pares == 7: score_geral += 40
@@ -92,70 +93,87 @@ else:
                             else: score_geral -= 20
                             if 195 <= soma_total <= 235: score_geral += 20
                             else: score_geral -= 40
-                                
                             lista_geral.append((score_geral, sorted(list(f_comb))))
+                                
+                            # 4. Estratégia Engenharia Reversa
+                            # Exige 9 ou 10 repetições do último sorteio + regras básicas boas
+                            if repetidas_do_ultimo in [9, 10] and (195 <= soma_total <= 235) and (7 <= impares <= 9):
+                                lista_reversa.append((score_geral, sorted(list(f_comb))))
 
                     lista_diamante.sort(key=lambda x: x[0], reverse=True)
                     lista_frias.sort(key=lambda x: x[0], reverse=True)
                     lista_geral.sort(key=lambda x: x[0], reverse=True)
-                    
-                    top_10_diamante = lista_diamante[:10]
-                    top_1000_frias = lista_frias[:1000]
-                    top_5000_geral = lista_geral[:5000]
+                    lista_reversa.sort(key=lambda x: x[0], reverse=True)
                     
                     def formatar_saida(lista_jogos):
                         return [{'Rank': rank, 'Pontuação': round(score, 2), **{f'B{i+1}': dez for i, dez in enumerate(comb)}} 
                                 for rank, (score, comb) in enumerate(lista_jogos, 1)]
 
-                    # Salvando no "cérebro" do app para não sumir
-                    st.session_state['df_diamante'] = pd.DataFrame(formatar_saida(top_10_diamante))
-                    st.session_state['df_frias'] = pd.DataFrame(formatar_saida(top_1000_frias))
-                    st.session_state['df_geral'] = pd.DataFrame(formatar_saida(top_5000_geral))
+                    st.session_state['df_diamante'] = pd.DataFrame(formatar_saida(lista_diamante[:10]))
+                    st.session_state['df_frias'] = pd.DataFrame(formatar_saida(lista_frias[:1000]))
+                    st.session_state['df_geral'] = pd.DataFrame(formatar_saida(lista_geral[:5000]))
+                    st.session_state['df_reversa'] = pd.DataFrame(formatar_saida(lista_reversa[:10])) # Top 10 da reversa
                     st.session_state['gerado'] = True
                     
-                    st.success("✅ Tripla Análise Concluída com Sucesso!")
+                    st.success("✅ Quádrupla Análise Concluída com Sucesso!")
                     
-            # Só mostra as abas e o conferidor se as listas já foram geradas
             if st.session_state.get('gerado'):
-                aba1, aba2, aba3 = st.tabs(["💎 Top 10 Diamante", "❄️ Top 1.000 Elite", "🔥 Top 5.000 Geral"])
+                aba1, aba2, aba3, aba4 = st.tabs(["💎 Top 10 Diamante", "❄️ Top 1.000 Elite", "🔥 Top 5.000 Geral", "🔄 Top 10 Engenharia Reversa"])
                 
                 with aba1: st.dataframe(st.session_state['df_diamante'])
                 with aba2: st.dataframe(st.session_state['df_frias'])
                 with aba3: st.dataframe(st.session_state['df_geral'])
+                with aba4:
+                    st.markdown("### A Lei da Repetição")
+                    st.write("Estes 10 jogos foram forçados a repetir exatas 9 ou 10 dezenas do último sorteio da sua planilha, que é a maior tendência matemática do jogo.")
+                    st.dataframe(st.session_state['df_reversa'])
 
-                # --- NOVIDADE: O CONFERIDOR DE MILHÕES ---
+                # --- CONFERIDOR INTELIGENTE (BATEMOS NA TRAVE?) ---
                 st.markdown("---")
                 st.subheader("🏆 Passo 3: Conferidor de Milhões")
-                st.write("Digite as 15 dezenas do último sorteio da Caixa para descobrir se nossos motores bateram o prêmio máximo!")
-                
-                # Caixinha multiseleção limitando a 15 dezenas
                 dezenas_sorteadas = st.multiselect("Selecione as exatas 15 dezenas sorteadas:", options=list(range(1, 26)), max_selections=15)
                 
                 if len(dezenas_sorteadas) == 15:
                     if st.button("🎰 Conferir Sorteio"):
                         set_sorteadas = set(dezenas_sorteadas)
                         
-                        def conferir_lista(df, nome_lista):
-                            for index, row in df.iterrows():
-                                # Pega as 16 dezenas daquela linha
-                                jogo = set(row[['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16']].values)
-                                
-                                # Se as 15 sorteadas estão DENTRO do nosso jogo de 16, é prêmio máximo!
-                                if set_sorteadas.issubset(jogo):
-                                    st.balloons() # Chuva de balões na tela!
-                                    st.success(f"🎉 **PARABÉNS!** Se você tivesse escolhido a sequência **Rank #{row['Rank']}** da planilha **{nome_lista}**, você seria um **VENCEDOR MILIONÁRIO**! 🤑")
-                                    st.write(f"A sua aposta de 16 números daquela linha era: {sorted(list(jogo))}")
-                                    return True
-                            return False
-                            
-                        acertou = False
-                        # Checa do Diamante para o Geral
-                        if conferir_lista(st.session_state['df_diamante'], "💎 Top 10 Diamante"): acertou = True
-                        elif conferir_lista(st.session_state['df_frias'], "❄️ Top 1.000 Elite"): acertou = True
-                        elif conferir_lista(st.session_state['df_geral'], "🔥 Top 5.000 Geral"): acertou = True
+                        max_acertos = 0
+                        melhor_jogo = None
+                        melhor_rank = 0
+                        qual_lista = ""
                         
-                        if not acertou:
-                            st.info("Poxa, dessa vez o prêmio de 15 pontos não estava nas nossas listas. Mas os matemáticos não desistem!")
+                        listas_para_conferir = [
+                            ("💎 Top 10 Diamante", st.session_state['df_diamante']),
+                            ("🔄 Top 10 Reversa", st.session_state['df_reversa']),
+                            ("❄️ Top 1.000 Elite", st.session_state['df_frias']),
+                            ("🔥 Top 5.000 Geral", st.session_state['df_geral'])
+                        ]
+                        
+                        for nome_lista, df_lista in listas_para_conferir:
+                            if not df_lista.empty:
+                                for index, row in df_lista.iterrows():
+                                    jogo = set(row[['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16']].values)
+                                    acertos = len(set_sorteadas.intersection(jogo))
+                                    
+                                    if acertos > max_acertos:
+                                        max_acertos = acertos
+                                        melhor_jogo = sorted(list(jogo))
+                                        melhor_rank = row['Rank']
+                                        qual_lista = nome_lista
+                        
+                        # Resultados!
+                        if max_acertos == 15:
+                            st.balloons()
+                            st.success(f"🎉 **PARABÉNS!** 15 ACERTOS CRAVADOS na lista **{qual_lista}** (Rank #{melhor_rank})! Você é um **VENCEDOR MILIONÁRIO**! 🤑")
+                            st.write(f"A sua aposta era: {melhor_jogo}")
+                        elif max_acertos == 14:
+                            st.warning(f"😱 **NA TRAVE!!!** Você acertou **14 números** na lista **{qual_lista}** (Rank #{melhor_rank})! Já garante um prêmio excelente!")
+                            st.write(f"A sua aposta era: {melhor_jogo}")
+                        elif max_acertos >= 11:
+                            st.info(f"👍 **Bom jogo!** O nosso melhor desempenho foi **{max_acertos} acertos** na lista **{qual_lista}** (Rank #{melhor_rank}). As apostas já se pagaram!")
+                            st.write(f"A sua aposta era: {melhor_jogo}")
+                        else:
+                            st.error(f"📉 O maior acerto foi de apenas {max_acertos} números. Dessa vez o sorteio fugiu totalmente dos padrões matemáticos históricos!")
 
         except Exception as e:
             st.error(f"Poxa, deu um erro ao ler a planilha. Detalhe técnico: {e}")
