@@ -5,29 +5,39 @@ import itertools
 import os
 from datetime import datetime
 
-# Configuração da página (mantém o wide, mas ajustado para mobile)
+# Configuração da página
 st.set_page_config(page_title="Gerador Lotofácil VIP", page_icon="💎", layout="wide")
 
-# Injeção de CSS para modernizar o visual e otimizar para celular
+# Injeção de CSS - Fundo Azul Clarinho e Correção do Corte de Texto
 st.markdown("""
     <style>
-        /* Reduzir margens e tamanho de fontes no mobile */
-        .block-container { padding-top: 1rem; padding-bottom: 2rem; }
+        /* Cor de fundo azul bem clarinho para o aplicativo inteiro */
+        .stApp {
+            background-color: #F0F8FF; 
+        }
+        /* Ajuste do topo para não cortar as letras com a barra branca do sistema */
+        .block-container { 
+            padding-top: 4rem; 
+            padding-bottom: 2rem; 
+        }
         @media (max-width: 768px) {
             h1 {font-size: 1.8rem !important;}
             h2 {font-size: 1.4rem !important;}
             h3 {font-size: 1.2rem !important;}
         }
-        /* Estilizar as bolinhas do painel */
+        /* Estilizar as bolinhas do painel de botões */
         .stButton>button { border-radius: 30px; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
 ARQUIVO_BASE = "banco_dados.csv"
 
-# --- CONTROLE DE SESSÃO PARA O TECLADO VIRTUAL ---
+# --- CONTROLE DE SESSÃO ---
 if "palpite_manual" not in st.session_state:
     st.session_state["palpite_manual"] = set()
+# Essa variável vai controlar o cálculo automático para o robô não ficar rodando em loop
+if "N_GERADO" not in st.session_state:
+    st.session_state["N_GERADO"] = None 
 
 def toggle_dezena(dezena):
     palpite = st.session_state["palpite_manual"]
@@ -48,7 +58,6 @@ if senha_digitada != senha_correta:
 else:
     st.sidebar.success("✅ Acesso Liberado!")
 
-# Transferimos a gestão do Banco de Dados para a barra lateral (Limpa a tela principal!)
 with st.sidebar.expander("📁 Gestão do Banco de Dados", expanded=False):
     df = None
     if os.path.exists(ARQUIVO_BASE):
@@ -85,18 +94,15 @@ st.markdown("## 💎 Gerador Lotofácil VIP")
 if df is not None:
     st.markdown("### 🚀 Passo 1: Motores de Análise")
     
-    col_a, col_b = st.columns([2, 1])
-    with col_a:
-        N_DEZENAS = st.radio("Tamanho dos jogos gerados:", [15, 16, 17], horizontal=True)
-    with col_b:
-        btn_processar = st.button("⚡ Gerar Combinações", use_container_width=True)
+    # --- NOVIDADE: CÁLCULO TOTALMENTE AUTOMÁTICO ---
+    N_DEZENAS = st.radio("Selecione a quantidade de dezenas para calcular combinações:", [15, 16, 17], horizontal=True)
 
-    if btn_processar:
-        with st.spinner(f"Cruzando milhões de combinações. Aguarde..."):
+    # O sistema percebe se a quantidade mudou e roda o motor sozinho!
+    if st.session_state["N_GERADO"] != N_DEZENAS:
+        with st.spinner(f"Cruzando milhões de combinações para jogos de {N_DEZENAS} números. Aguarde..."):
             dezenas_cols = [col for col in df.columns if "Dezena" in col]
             if not dezenas_cols: dezenas_cols = df.columns[-15:]
             
-            # Limpeza de dados nulos antes da conversão para evitar erros de leitura
             past_draws = [frozenset(row) for row in df[dezenas_cols].dropna().astype(int).values]
             all_numbers = df[dezenas_cols].dropna().astype(int).values.flatten()
             counts = Counter(all_numbers)
@@ -163,7 +169,7 @@ if df is not None:
             st.session_state["df_reversa"] = pd.DataFrame(formatar_saida(lista_reversa[:10]))
             st.session_state["N_GERADO"] = N_DEZENAS
             st.session_state["gerado"] = True
-            st.rerun() # Atualiza a tela automaticamente
+            st.rerun() # Dá um "refresh" mágico na tela
 
     if st.session_state.get("gerado"):
         st.markdown(f"### 📋 Listas de {st.session_state['N_GERADO']} Dezenas")
@@ -179,11 +185,10 @@ if df is not None:
 
         st.markdown("---")
         
-        # --- O NOVO PAINEL UNIFICADO DE SIMULAÇÃO (GRADE 5x5) ---
+        # --- PAINEL UNIFICADO DE SIMULAÇÃO ---
         st.markdown("### 🎯 Painel de Simulação")
         st.caption("Clique nas bolinhas para formar o jogo de 15 dezenas (Conferência ou Oráculo).")
         
-        # Desenhando o teclado numérico de 25 botões
         cols = st.columns(5)
         for i in range(1, 26):
             c = (i - 1) % 5
@@ -191,16 +196,13 @@ if df is not None:
             icone = "🟢" if selecionada else "⚪"
             cols[c].button(f"{icone} {i:02d}", key=f"btn_{i}", on_click=toggle_dezena, args=(i,), use_container_width=True)
 
-        # Mostrando quantas dezenas já foram selecionadas
         selecionadas = sorted(list(st.session_state["palpite_manual"]))
         st.write(f"**Dezenas selecionadas ({len(selecionadas)}/15):** " + " - ".join([f"{d:02d}" for d in selecionadas]))
 
-        # Só libera os botões de ação quando tiver exatamente 15 números verdes
         if len(selecionadas) == 15:
             col_acao1, col_acao2 = st.columns(2)
             
             with col_acao1:
-                # --- AÇÃO 1: CONFERIR NAS LISTAS ---
                 if st.button("🎰 Conferir nas minhas Listas", use_container_width=True):
                     set_sorteadas = set(selecionadas)
                     n_gerado = st.session_state['N_GERADO']
@@ -246,7 +248,6 @@ if df is not None:
                     st.write(f"Nas outras opções geradas, o motor alcançou **{mensagem_sistema}**")
 
             with col_acao2:
-                # --- AÇÃO 2: ORÁCULO HISTÓRICO ---
                 if st.button("🔮 Consultar Oráculo (Histórico)", use_container_width=True):
                     set_palpite = set(selecionadas)
                     dezenas_cols = [col for col in df.columns if "Dezena" in col]
