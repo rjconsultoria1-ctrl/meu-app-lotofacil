@@ -35,7 +35,6 @@ ARQUIVO_BASE = "banco_dados.csv"
 # --- CONTROLE DE SESSÃO ---
 if "palpite_manual" not in st.session_state:
     st.session_state["palpite_manual"] = set()
-# Essa variável vai controlar o cálculo automático para o robô não ficar rodando em loop
 if "N_GERADO" not in st.session_state:
     st.session_state["N_GERADO"] = None 
 
@@ -94,11 +93,14 @@ st.markdown("## 💎 Gerador Lotofácil VIP")
 if df is not None:
     st.markdown("### 🚀 Passo 1: Motores de Análise")
     
-    # --- NOVIDADE: CÁLCULO TOTALMENTE AUTOMÁTICO ---
-    N_DEZENAS = st.radio("Selecione a quantidade de dezenas para calcular combinações:", [15, 16, 17], horizontal=True)
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        N_DEZENAS = st.radio("Selecione a quantidade de dezenas para calcular:", [15, 16, 17], horizontal=True)
+    with col_b:
+        # AQUI ESTÁ O NOSSO HERÓI DE VOLTA PARA SALVAR A MEMÓRIA!
+        btn_processar = st.button("⚡ Processar Combinações", use_container_width=True)
 
-    # O sistema percebe se a quantidade mudou e roda o motor sozinho!
-    if st.session_state["N_GERADO"] != N_DEZENAS:
+    if btn_processar:
         with st.spinner(f"Cruzando milhões de combinações para jogos de {N_DEZENAS} números. Aguarde..."):
             dezenas_cols = [col for col in df.columns if "Dezena" in col]
             if not dezenas_cols: dezenas_cols = df.columns[-15:]
@@ -169,7 +171,7 @@ if df is not None:
             st.session_state["df_reversa"] = pd.DataFrame(formatar_saida(lista_reversa[:10]))
             st.session_state["N_GERADO"] = N_DEZENAS
             st.session_state["gerado"] = True
-            st.rerun() # Dá um "refresh" mágico na tela
+            st.rerun() 
 
     if st.session_state.get("gerado"):
         st.markdown(f"### 📋 Listas de {st.session_state['N_GERADO']} Dezenas")
@@ -185,7 +187,6 @@ if df is not None:
 
         st.markdown("---")
         
-        # --- PAINEL UNIFICADO DE SIMULAÇÃO ---
         st.markdown("### 🎯 Painel de Simulação")
         st.caption("Clique nas bolinhas para formar o jogo de 15 dezenas (Conferência ou Oráculo).")
         
