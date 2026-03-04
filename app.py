@@ -29,17 +29,24 @@ else:
     
     with col1:
         if os.path.exists(ARQUIVO_BASE):
-            df = pd.read_csv(ARQUIVO_BASE)
+            try:
+                # Tenta ler no padrão da internet (UTF-8)
+                df = pd.read_csv(ARQUIVO_BASE, encoding='utf-8')
+            except UnicodeDecodeError:
+                # Se engasgar, tenta ler no padrão do Excel do Windows (latin-1)
+                df = pd.read_csv(ARQUIVO_BASE, encoding='latin-1')
             st.info(f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados.")
-        else:
-            st.warning("⚠️ Nenhuma base automática encontrada. Faça o upload inicial ao lado.")
             
     with col2:
         with st.expander("🔄 Subir uma nova planilha manual"):
             arquivo_upado = st.file_uploader("Substituir base de dados", type=["csv", "xlsx"])
             if arquivo_upado is not None:
                 if arquivo_upado.name.endswith('.csv'):
-                    df = pd.read_csv(arquivo_upado)
+                    try:
+                        df = pd.read_csv(arquivo_upado, encoding='utf-8')
+                    except UnicodeDecodeError:
+                        arquivo_upado.seek(0)
+                        df = pd.read_csv(arquivo_upado, encoding='latin-1')
                 else:
                     df = pd.read_excel(arquivo_upado)
                 df.to_csv(ARQUIVO_BASE, index=False)
