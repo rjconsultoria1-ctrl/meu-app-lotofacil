@@ -27,41 +27,38 @@ st.subheader("📁 Passo 1: Base de Dados")
 df = None
 col1, col2 = st.columns([2, 1])  # <-- Essa linha cria o col1 e precisa existir!
 
+st.subheader("📁 Passo 1: Base de Dados")
+    
+    # Lógica do Banco de Dados Automático
+df = None
+col1, col2 = st.columns([2, 1])
+    
 with col1:
-    if os.path.exists(ARQUIVO_BASE):
-        try:
-            # Tenta ler no padrão americano (vírgula)
-            df = pd.read_csv(ARQUIVO_BASE, encoding="utf-8")
-        except pd.errors.ParserError:
-            # Se der erro de estrutura (Parser), tenta com ponto e vírgula (Padrão Excel Brasil)
-            df = pd.read_csv(ARQUIVO_BASE, sep=";", encoding="utf-8")
-        except UnicodeDecodeError:
-            # Se der erro de sotaque (Unicode), tenta o padrão Windows/latin-1
+        if os.path.exists(ARQUIVO_BASE):
             try:
-                df = pd.read_csv(ARQUIVO_BASE, sep=";", encoding="latin-1")
-            except:
-                df = pd.read_csv(ARQUIVO_BASE, encoding="latin-1")
-
-        st.info(
-            f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados."
-        )
-
+                # Tentativa 1: O padrão do Excel Brasileiro (Como a sua planilha está agora)
+                df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='latin-1')
+            except Exception:
+                # Tentativa 2: O padrão Universal (Como o nosso app vai salvar os próximos)
+                df = pd.read_csv(ARQUIVO_BASE, sep=',', encoding='utf-8')
+                
+            st.info(f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados.")
+            
 with col2:
-    with st.expander("🔄 Subir uma nova planilha manual"):
-        arquivo_upado = st.file_uploader(
-            "Substituir base de dados", type=["csv", "xlsx"]
-        )
-        if arquivo_upado is not None:
-            if arquivo_upado.name.endswith(".csv"):
-                try:
-                    df = pd.read_csv(arquivo_upado, sep=";", encoding="utf-8")
-                except UnicodeDecodeError:
-                    arquivo_upado.seek(0)
-                    df = pd.read_csv(arquivo_upado, sep=";", encoding="latin-1")
-            else:
-                df = pd.read_excel(arquivo_upado)
-            df.to_csv(ARQUIVO_BASE, index=False)
-            st.success("Nova base salva no sistema! Recarregue a página.")
+        with st.expander("🔄 Subir uma nova planilha manual"):
+            arquivo_upado = st.file_uploader("Substituir base de dados", type=["csv", "xlsx"])
+            if arquivo_upado is not None:
+                if arquivo_upado.name.endswith('.csv'):
+                    try:
+                        df = pd.read_csv(arquivo_upado, sep=';', encoding='latin-1')
+                    except Exception:
+                        arquivo_upado.seek(0)
+                        df = pd.read_csv(arquivo_upado, sep=',', encoding='utf-8')
+                else:
+                    df = pd.read_excel(arquivo_upado)
+                
+                df.to_csv(ARQUIVO_BASE, index=False)
+                st.success("Nova base salva no sistema! Recarregue a página.")
 
 if df is not None:
     st.subheader("🚀 Passo 2: Motores de Análise")
