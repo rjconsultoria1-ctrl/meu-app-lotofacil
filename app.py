@@ -27,14 +27,21 @@ else:
     df = None
     col1, col2 = st.columns([2, 1])
     
-    with col1:
+   with col1:
         if os.path.exists(ARQUIVO_BASE):
             try:
-                # Tenta ler no padrão da internet (UTF-8)
+                # Tenta ler no padrão americano (vírgula)
                 df = pd.read_csv(ARQUIVO_BASE, encoding='utf-8')
+            except pd.errors.ParserError:
+                # Se der erro de estrutura (Parser), tenta com ponto e vírgula (Padrão Excel Brasil)
+                df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='utf-8')
             except UnicodeDecodeError:
-                # Se engasgar, tenta ler no padrão do Excel do Windows (latin-1)
-                df = pd.read_csv(ARQUIVO_BASE, encoding='latin-1')
+                # Se der erro de sotaque (Unicode), tenta o padrão Windows/latin-1
+                try:
+                    df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='latin-1')
+                except:
+                    df = pd.read_csv(ARQUIVO_BASE, encoding='latin-1')
+                    
             st.info(f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados.")
             
     with col2:
@@ -43,10 +50,10 @@ else:
             if arquivo_upado is not None:
                 if arquivo_upado.name.endswith('.csv'):
                     try:
-                        df = pd.read_csv(arquivo_upado, encoding='utf-8')
+                        df = pd.read_csv(arquivo_upado, sep=';',encoding='utf-8')
                     except UnicodeDecodeError:
                         arquivo_upado.seek(0)
-                        df = pd.read_csv(arquivo_upado, encoding='latin-1')
+                        df = pd.read_csv(arquivo_upado, sep=';', encoding='latin-1')
                 else:
                     df = pd.read_excel(arquivo_upado)
                 df.to_csv(ARQUIVO_BASE, index=False)
