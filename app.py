@@ -21,13 +21,13 @@ if senha_digitada != senha_correta:
 else:
     st.sidebar.success("✅ Acesso Liberado!")
     
-    st.subheader("📁 Passo 1: Base de Dados")
+st.subheader("📁 Passo 1: Base de Dados")
     
     # Lógica do Banco de Dados Automático
-    df = None
-    col1, col2 = st.columns([2, 1])
+df = None
+col1, col2 = st.columns([2, 1]) # <-- Essa linha cria o col1 e precisa existir!
     
-   with col1:
+with col1:
         if os.path.exists(ARQUIVO_BASE):
             try:
                 # Tenta ler no padrão americano (vírgula)
@@ -44,13 +44,13 @@ else:
                     
             st.info(f"📊 Base de dados automática carregada com sucesso! Temos **{len(df)} sorteios** registrados.")
             
-    with col2:
+with col2:
         with st.expander("🔄 Subir uma nova planilha manual"):
             arquivo_upado = st.file_uploader("Substituir base de dados", type=["csv", "xlsx"])
             if arquivo_upado is not None:
                 if arquivo_upado.name.endswith('.csv'):
                     try:
-                        df = pd.read_csv(arquivo_upado, sep=';',encoding='utf-8')
+                        df = pd.read_csv(arquivo_upado, sep=';', encoding='utf-8')
                     except UnicodeDecodeError:
                         arquivo_upado.seek(0)
                         df = pd.read_csv(arquivo_upado, sep=';', encoding='latin-1')
@@ -59,7 +59,7 @@ else:
                 df.to_csv(ARQUIVO_BASE, index=False)
                 st.success("Nova base salva no sistema! Recarregue a página.")
     
-    if df is not None:
+if df is not None:
         st.subheader("🚀 Passo 2: Motores de Análise")
         
         if st.button("⚡ Processar as 4 Estratégias"):
