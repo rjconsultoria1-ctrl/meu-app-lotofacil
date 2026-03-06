@@ -322,7 +322,7 @@ if df is not None:
             with a1: st.data_editor(st.session_state["df_diamante"], column_config=cfg_col, hide_index=True, key="e1", use_container_width=True)
             with a2: st.data_editor(st.session_state["df_frias"], column_config=cfg_col, hide_index=True, key="e2", use_container_width=True)
             with a3: st.data_editor(st.session_state["df_geral"], column_config=cfg_col, hide_index=True, key="e3", use_container_width=True)
-            with a4: st.data_editor(st.session_state["df_reversa"], column_config=cfg_coluna=cfg_col, hide_index=True, key="e4", use_container_width=True)
+            with a4: st.data_editor(st.session_state["df_reversa"], column_config=cfg_col, hide_index=True, key="e4", use_container_width=True)
 
     with col_dir:
         st.markdown("<h3 style='text-align:center; color:#5C2D91; margin-top:0;'>Simulador da LOTOFÁCIL</h3>", unsafe_allow_html=True)
