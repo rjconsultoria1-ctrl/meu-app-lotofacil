@@ -5,67 +5,126 @@ import itertools
 import os
 from datetime import datetime
 
-# Configuração da página
-st.set_page_config(page_title="Gerador Lotofácil VIP", page_icon="💎", layout="wide")
+# Configuração da página (Layout Wide obrigatório para visual Fiori)
+st.set_page_config(page_title="Cockpit Lotofácil", page_icon="🔷", layout="wide")
 
-# Injeção de CSS - Fundo, Ajustes e o visual do VOLANTE VIP
+# ==========================================
+# INJEÇÃO DE CSS - TEMA SAP FIORI (QUARTZ LIGHT)
+# ==========================================
 st.markdown("""
     <style>
-        .stApp { background-color: #F0F8FF; }
-        .block-container { padding-top: 4rem; padding-bottom: 2rem; }
-        @media (max-width: 768px) {
-            h1 {font-size: 1.8rem !important;}
-            h2 {font-size: 1.4rem !important;}
-            h3 {font-size: 1.2rem !important;}
-            
-            /* Forçar as bolinhas do volante a não empilharem no celular */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
-                flex-wrap: nowrap !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
-                min-width: 18% !important;
-                padding: 2px !important;
-            }
-        }
+        /* Fundo padrão do SAP Fiori */
+        .stApp { background-color: #F4F4F6; font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; }
         
-        /* Deixar as bolinhas do volante redondas e padronizadas */
+        /* Ajuste do container para anular a margem do Streamlit e colar a Shell Bar no topo */
+        .block-container { padding-top: 0rem !important; padding-bottom: 2rem; max-width: 100%; padding-left: 0; padding-right: 0;}
+        
+        /* A famosa SAP Shell Bar */
+        .fiori-shell {
+            background-color: #0A6ED1;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .fiori-shell-logo { display: flex; align-items: center; gap: 10px; }
+        .fiori-shell-icons { font-size: 1.2rem; cursor: pointer; }
+        
+        /* Containers centrais com margem correta */
+        .main-content { padding: 0 2rem; }
+        
+        /* KPI Cards (Tiles do Fiori) */
+        .kpi-container { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .fiori-card {
+            background-color: white;
+            border-radius: 4px;
+            padding: 15px 20px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 200px;
+            border-bottom: 4px solid #0A6ED1;
+        }
+        .fiori-card.green { border-bottom-color: #107E3E; }
+        .fiori-card.orange { border-bottom-color: #E9730C; }
+        
+        .fiori-card h3 { margin: 0; font-size: 2.2rem; color: #32363A; padding-bottom: 5px;}
+        .fiori-card p { margin: 0; font-size: 0.9rem; color: #6A6D70; }
+        
+        /* Estilização dos Botões Estilo SAP */
+        .stButton>button { 
+            border-radius: 4px !important; 
+            font-weight: bold;
+            border: 1px solid #0A6ED1;
+            color: #0A6ED1;
+            transition: all 0.2s;
+        }
+        .stButton>button:hover { background-color: #0A6ED1; color: white; }
+        
+        /* Bolinhas do Volante - Transformando em 'Tiles' Quadrados Arredondados Fiori */
         div[data-testid="stVerticalBlockBorderWrapper"] .stButton>button { 
-            border-radius: 50% !important; 
             height: 45px !important;
             padding: 0px !important;
             font-size: 14px !important;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #D9D9D9;
+            color: #32363A;
+        }
+        
+        @media (max-width: 768px) {
+            .fiori-shell { font-size: 1rem; padding: 10px 15px; }
+            .main-content { padding: 0 1rem; }
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] { min-width: 18% !important; padding: 2px !important; }
         }
     </style>
+""", unsafe_allow_html=True)
+
+# Renderizando a Shell Bar do Fiori via HTML
+st.markdown("""
+    <div class="fiori-shell">
+        <div class="fiori-shell-logo">
+            <span>🔷 SAP BTP</span>
+            <span style="font-weight: normal; margin-left: 10px;">| Cockpit de Automação Lotofácil</span>
+        </div>
+        <div class="fiori-shell-icons">
+            🔍 🔔 ⚙️ 👤
+        </div>
+    </div>
 """, unsafe_allow_html=True)
 
 ARQUIVO_BASE = "banco_dados.csv"
 
 # --- CONTROLE DE SESSÃO ---
-if "palpite_manual" not in st.session_state:
-    st.session_state["palpite_manual"] = set()
+if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
 
 def toggle_dezena(dezena):
     palpite = st.session_state["palpite_manual"]
-    if dezena in palpite:
-        palpite.remove(dezena)
-    elif len(palpite) < 15:
-        palpite.add(dezena)
+    if dezena in palpite: palpite.remove(dezena)
+    elif len(palpite) < 15: palpite.add(dezena)
     st.session_state["palpite_manual"] = palpite
 
+# Início do Container Principal (para aplicar o padding correto abaixo da Shell Bar)
+st.markdown('<div class="main-content">', unsafe_allow_html=True)
+
 # --- ÁREA RESTRITA E MENU LATERAL ---
-st.sidebar.title("🔐 Login VIP")
+st.sidebar.title("🔐 Login SAP")
 senha_digitada = st.sidebar.text_input("Senha de acesso:", type="password")
 senha_correta = "abap123"
 
 if senha_digitada != senha_correta:
-    st.warning("🔒 Por favor, insira a senha no menu lateral para liberar o sistema.")
+    st.warning("🔒 Por favor, insira a senha no menu lateral para autenticação (SSO).")
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 else:
-    st.sidebar.success("✅ Acesso Liberado!")
+    st.sidebar.success("✅ Autenticado com sucesso")
 
-with st.sidebar.expander("📁 Gestão do Banco de Dados", expanded=False):
+with st.sidebar.expander("📁 Gestão de Master Data (Base CSV)", expanded=False):
     df = None
     if os.path.exists(ARQUIVO_BASE):
         try: df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='utf-8')
@@ -74,7 +133,6 @@ with st.sidebar.expander("📁 Gestão do Banco de Dados", expanded=False):
             except:
                 try: df = pd.read_csv(ARQUIVO_BASE, sep=',', encoding='utf-8')
                 except: df = pd.read_csv(ARQUIVO_BASE, sep=',', encoding='latin-1')
-        st.success(f"Temos {len(df)} sorteios registrados.")
     
     st.write("Substituir base manual:")
     arquivo_upado = st.file_uploader("", type=["csv", "xlsx"])
@@ -90,19 +148,14 @@ with st.sidebar.expander("📁 Gestão do Banco de Dados", expanded=False):
         else:
             df = pd.read_excel(arquivo_upado)
         df.to_csv(ARQUIVO_BASE, index=False)
-        # Limpa o cache automaticamente se o arquivo mudar!
         st.cache_data.clear()
         st.success("Nova base salva! Atualize a página.")
 
 # ==========================================
-# O CÉREBRO DA OPERAÇÃO (COM MEMÓRIA CACHE)
+# CÉREBRO DA OPERAÇÃO (MEMÓRIA CACHE)
 # ==========================================
 @st.cache_data(show_spinner=False)
 def processar_motor_matematico(df_dados, n_dezenas):
-    """
-    Esta função processa os milhões de cálculos.
-    Como tem o @st.cache_data, se a base não mudar, ele puxa da memória em 0.01 segundos!
-    """
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
     if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
     
@@ -161,26 +214,40 @@ def processar_motor_matematico(df_dados, n_dezenas):
     def formatar(lista):
         return [{"Jogar?": False, "Rank": r, "Pontuação": round(s, 2), **{f"B{i+1}": d for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
 
-    # Retorna o Banco de Dados Completo (Top 5000 de cada)
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
-# --- TELA PRINCIPAL ---
-st.markdown("## 💎 Gerador Lotofácil VIP")
-
 if df is not None:
-    st.markdown("### 🚀 Passo 1: Motores de Análise")
+    # Captura a dezena atual antes de desenhar os KPIs
+    N_DEZENAS = st.radio("Filtro de Processamento (Qtd. Dezenas):", [15, 16, 17], horizontal=True)
     
-    # Botão rebaixado para melhorar o fluxo
-    N_DEZENAS = st.radio("Selecione a quantidade de dezenas para os jogos:", [15, 16, 17], horizontal=True)
-    btn_processar = st.button("⚡ Processar Combinações", use_container_width=True)
+    qtd_sorteios = len(df)
+    status_memoria = "Ativo" if st.session_state.get("gerado") else "Aguardando"
+    cor_memoria = "green" if st.session_state.get("gerado") else "orange"
+
+    # --- KPI TILES (CARDS FIORI) ---
+    st.markdown(f"""
+        <div class="kpi-container">
+            <div class="fiori-card">
+                <h3>{qtd_sorteios}</h3>
+                <p>Sorteios Master Data</p>
+            </div>
+            <div class="fiori-card">
+                <h3>{N_DEZENAS}</h3>
+                <p>Dezenas Selecionadas</p>
+            </div>
+            <div class="fiori-card {cor_memoria}">
+                <h3>{status_memoria}</h3>
+                <p>Status do Motor BTP</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    btn_processar = st.button("▶ Executar Background Job", use_container_width=True)
 
     if btn_processar:
-        with st.spinner(f"Acessando núcleo de processamento para {N_DEZENAS} números..."):
-            # O sistema vai tentar puxar da Memória RAM. Se não tiver, ele calcula.
+        with st.spinner(f"Processando algoritmo em background (Job {N_DEZENAS})..."):
             dia_full, fri_full, ger_full, rev_full = processar_motor_matematico(df, N_DEZENAS)
             
-            # --- O FATOR SURPRESA (Amostragem Aleatória) ---
-            # Ele pega a "nata" das listas e sorteia algumas opções frescas para a tela
             st.session_state["df_diamante"] = dia_full.head(100).sample(min(10, len(dia_full))).sort_values("Rank")
             st.session_state["df_reversa"] = rev_full.head(100).sample(min(10, len(rev_full))).sort_values("Rank")
             st.session_state["df_frias"] = fri_full.head(1000).sample(min(50, len(fri_full))).sort_values("Rank")
@@ -188,13 +255,13 @@ if df is not None:
             
             st.session_state["N_GERADO"] = N_DEZENAS
             st.session_state["gerado"] = True
+            st.rerun() # Atualiza os KPIs automaticamente
 
     if st.session_state.get("gerado"):
-        st.markdown(f"### 📋 Listas de {st.session_state['N_GERADO']} Dezenas (Resultados Dinâmicos)")
-        st.caption("As listas abaixo exibem seleções premium exclusivas. A cada processamento, novas combinações da elite serão sorteadas!")
+        st.markdown(f"#### 📊 Monitor de Documentos ({st.session_state['N_GERADO']} Dezenas)")
         
         cfg_coluna = {"Jogar?": st.column_config.CheckboxColumn("Jogar?", default=False)}
-        aba1, aba2, aba3, aba4 = st.tabs(["💎 Diamante", "❄️ Elite", "🔥 Geral", "🔄 Reversa"])
+        aba1, aba2, aba3, aba4 = st.tabs(["💎 Estratégia Diamante", "❄️ Estratégia Elite", "🔥 Estratégia Geral", "🔄 Estratégia Reversa"])
         
         with aba1: df_diamante_edit = st.data_editor(st.session_state["df_diamante"], column_config=cfg_coluna, hide_index=True, key="ed_dia", use_container_width=True)
         with aba2: df_frias_edit = st.data_editor(st.session_state["df_frias"], column_config=cfg_coluna, hide_index=True, key="ed_fri", use_container_width=True)
@@ -203,36 +270,30 @@ if df is not None:
 
         st.markdown("---")
         
-        # --- A NOVA CARTELA VIP (Volante Centralizado) ---
-        st.markdown("### 🎯 Volante de Simulação")
-        st.caption("Marque suas 15 dezenas no volante abaixo para conferir resultados ou histórico.")
+        st.markdown("#### ⚙️ Simulação e Oráculo (Conferência)")
         
-        c1, c2, c3 = st.columns([1, 2, 1]) # O c2 é a nossa coluna central
-        
+        c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
-            # st.container com border cria a caixinha sombreada bonita
             volante = st.container(border=True)
             with volante:
-                st.markdown("<h4 style='text-align: center; margin-bottom: 20px;'>Volante Oficial</h4>", unsafe_allow_html=True)
-                
-                # Montando o grid de 5x5 perfeitamente
+                st.markdown("<h5 style='text-align: center; color: #32363A; margin-bottom: 15px;'>Grid de Entrada de Dezenas</h5>", unsafe_allow_html=True)
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
                         num = linha * 5 + col_idx + 1
                         selecionada = num in st.session_state["palpite_manual"]
-                        icone = "🟢" if selecionada else "⚪"
+                        icone = "🟩" if selecionada else "⬜"
                         with cols[col_idx]:
                             st.button(f"{icone}\n{num:02d}", key=f"btn_{num}", on_click=toggle_dezena, args=(num,), use_container_width=True)
         
         selecionadas = sorted(list(st.session_state["palpite_manual"]))
-        st.write(f"**Dezenas selecionadas ({len(selecionadas)}/15):** " + " - ".join([f"{d:02d}" for d in selecionadas]))
+        st.caption(f"Dezenas apontadas ({len(selecionadas)}/15): " + " - ".join([f"{d:02d}" for d in selecionadas]))
 
         if len(selecionadas) == 15:
             col_acao1, col_acao2 = st.columns(2)
             
             with col_acao1:
-                if st.button("🎰 Conferir nas minhas Listas", use_container_width=True):
+                if st.button("✔ Validar nas Listas Atuais", use_container_width=True):
                     set_sorteadas = set(selecionadas)
                     n_gerado = st.session_state['N_GERADO']
                     colunas_b = [f"B{i+1}" for i in range(n_gerado)]
@@ -255,25 +316,24 @@ if df is not None:
                                     qtd_jogos_marcados += 1
                                     if acertos > melhor_acerto_meus:
                                         melhor_acerto_meus = acertos
-                                        mensagem_meus = f"{acertos} acertos no jogo Rank #{row['Rank']} da lista {nome_lista}."
+                                        mensagem_meus = f"{acertos} acertos no documento #{row['Rank']} da {nome_lista}."
                                 else:
                                     if acertos > melhor_acerto_sistema:
                                         melhor_acerto_sistema = acertos
-                                        mensagem_sistema = f"{acertos} acertos no jogo Rank #{row['Rank']} da lista {nome_lista}."
+                                        mensagem_sistema = f"{acertos} acertos no documento #{row['Rank']} da {nome_lista}."
 
-                    st.markdown("#### 🎯 Desempenho dos SEUS Jogos")
-                    if qtd_jogos_marcados == 0:
-                        st.warning("Nenhum jogo marcado.")
+                    st.markdown("##### 🎯 Log de Execução (Meus Jogos)")
+                    if qtd_jogos_marcados == 0: st.warning("Nenhum item marcado para processamento.")
                     else:
-                        if melhor_acerto_meus >= 14: st.success(f"🎉 **ESPETACULAR!** {mensagem_meus}")
-                        elif melhor_acerto_meus >= 11: st.info(f"👍 **LUCRO!** Melhor marcado: {mensagem_meus}")
-                        else: st.error(f"📉 Maior acerto marcado: {melhor_acerto_meus}.")
+                        if melhor_acerto_meus >= 14: st.success(f"🎉 **[SUCESSO EXTREMO]** {mensagem_meus}")
+                        elif melhor_acerto_meus >= 11: st.info(f"👍 **[LUCRO APROVADO]** Melhor marcado: {mensagem_meus}")
+                        else: st.error(f"📉 **[FALHA]** Maior acerto marcado: {melhor_acerto_meus}.")
 
-                    st.markdown("#### 🤖 Desempenho do Sistema")
-                    st.write(f"O motor alcançou **{mensagem_sistema}** nos outros jogos.")
+                    st.markdown("##### 🤖 Log de Execução (Sistema Geral)")
+                    st.write(f"O motor de background alcançou **{mensagem_sistema}**.")
 
             with col_acao2:
-                if st.button("🔮 Consultar Oráculo (Histórico)", use_container_width=True):
+                if st.button("🔎 Consultar Oráculo (Banco Histórico)", use_container_width=True):
                     set_palpite = set(selecionadas)
                     dezenas_cols = [col for col in df.columns if "Dezena" in col]
                     if not dezenas_cols: dezenas_cols = df.columns[-15:]
@@ -287,7 +347,10 @@ if df is not None:
                         if set_palpite == jogo_hist:
                             conc = row[concurso_col] if concurso_col else f"Linha {idx}"
                             data_s = row[data_col] if data_col else "Desconhecida"
-                            st.error(f"🚨 **CUIDADO!** Esse jogo JÁ FOI SORTEADO no concurso **{conc}** ({data_s}). Fuja dele!")
+                            st.error(f"🚨 **[ALERTA DE DUPLICIDADE]** Ordem já existente no concurso **{conc}** ({data_s}). Jogo bloqueado por validação estatística!")
                             ja_sorteado = True
                             break
-                    if not ja_sorteado: st.success("✅ **EXCELENTE!** Combinação NUNCA sorteada na história.")
+                    if not ja_sorteado: st.success("✅ **[VALIDAÇÃO OK]** Combinação inédita liberada para processamento.")
+
+# Fim do main-content
+st.markdown('</div>', unsafe_allow_html=True)
