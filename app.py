@@ -15,14 +15,12 @@ st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wid
 # ==========================================
 st.markdown("""
     <style>
-        /* Oculta elementos nativos do Streamlit */
         [data-testid="collapsedControl"] { display: none; }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         [data-testid="stHeader"] {display: none;}
         
-        /* Ajuste do container principal */
         .block-container { 
             padding-top: 0rem !important; 
             padding-bottom: 2rem; 
@@ -31,7 +29,6 @@ st.markdown("""
             padding-right: 1rem;
         }
 
-        /* --- BARRA SUPERIOR FIORI/NETWEAVER --- */
         .fiori-header-bar {
             background-color: #354A5F;
             color: white;
@@ -52,79 +49,44 @@ st.markdown("""
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
 
-        /* --- BOTÕES GERAIS --- */
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
 
-        /* --- O VOLANTE ROXO (MÁGICA DO CSS) --- */
-        /* Segmenta os botões que estão dentro de 3 níveis de colunas (Apenas a grid 5x5 do simulador) */
+        /* O VOLANTE ROXO */
         div[data-testid="column"] div[data-testid="column"] div[data-testid="column"] .stButton > button { 
             border-radius: 50% !important; 
-            height: 42px !important;
-            width: 42px !important;
-            padding: 0 !important;
-            font-size: 15px !important;
-            margin: auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            height: 42px !important; width: 42px !important;
+            padding: 0 !important; font-size: 15px !important;
+            margin: auto; display: flex; justify-content: center; align-items: center;
         }
-        /* Dezena Não Selecionada (Branca com borda roxa) */
         div[data-testid="column"] div[data-testid="column"] div[data-testid="column"] .stButton > button[kind="secondary"] {
-            background-color: white !important;
-            color: #5C2D91 !important;
-            border: 2px solid #5C2D91 !important;
+            background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
         }
-        /* Dezena Selecionada (Totalmente Roxa) */
         div[data-testid="column"] div[data-testid="column"] div[data-testid="column"] .stButton > button[kind="primary"] {
-            background-color: #5C2D91 !important;
-            color: white !important;
-            border: 2px solid #5C2D91 !important;
+            background-color: #5C2D91 !important; color: white !important; border: 2px solid #5C2D91 !important;
         }
         
-        /* --- CARDS DE ÚLTIMOS RESULTADOS (HTML Customizado) --- */
         .faixa-resultados {
-            background-color: #D9D9D9;
-            padding: 10px 20px;
-            font-weight: bold;
-            color: #333;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-radius: 4px;
+            background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333;
+            margin-top: 30px; margin-bottom: 15px; border-radius: 4px;
         }
         .card-resultado {
-            background-color: white;
-            border: 1px solid #E0E0E0;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            overflow: hidden;
-            width: 100%;
+            background-color: white; border: 1px solid #E0E0E0; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%;
         }
         .card-resultado-header {
-            background-color: #5C2D91;
-            color: white;
-            padding: 12px 18px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
+            background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold;
+            display: flex; justify-content: space-between; font-size: 14px;
         }
         .card-resultado-body {
-            padding: 15px;
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
-            justify-items: center;
+            padding: 15px; display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 12px; justify-items: center;
         }
         .bolinha-roxa {
-            background-color: #5C2D91;
-            color: white;
-            width: 38px; height: 38px;
-            display: flex;
-            align-items: center; justify-content: center;
-            border-radius: 50%;
-            font-weight: bold; font-size: 14px;
+            background-color: #5C2D91; color: white; width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-weight: bold; font-size: 14px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.15);
         }
     </style>
@@ -138,7 +100,6 @@ ARQUIVO_BASE = "banco_dados.csv"
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
 
-# Geração da Grid "Fantasma" para a tela não ficar com buracos
 if "df_diamante" not in st.session_state:
     cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, 16)]
     df_vazio = pd.DataFrame(columns=cols_vazias)
@@ -157,7 +118,7 @@ def toggle_dezena(dezena):
 def limpar_volante():
     st.session_state["palpite_manual"] = set()
 
-# --- TELA DE LOGIN FIXADA ---
+# --- TELA DE LOGIN ---
 if not st.session_state["logged_in"]:
     st.markdown("""
         <style>
@@ -166,7 +127,6 @@ if not st.session_state["logged_in"]:
             .stSelectbox>div { background-color: white !important; }
         </style>
     """, unsafe_allow_html=True)
-    
     st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -268,8 +228,9 @@ def processar_motor_matematico(df_dados, n_dezenas):
     lista_geral.sort(key=lambda x: x[0], reverse=True)
     lista_reversa.sort(key=lambda x: x[0], reverse=True)
 
+    # AQUI ESTÁ A MÁGICA DOS 2 DÍGITOS: f"{d:02d}"
     def formatar(lista):
-        return [{"Sel": False, "Rank": r, "Pts": round(s, 2), **{f"B{i+1}": d for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+        return [{"Sel": False, "Rank": r, "Pts": round(s, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
 
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
@@ -286,7 +247,7 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
     if arquivo_upado is not None:
         if arquivo_upado.name.endswith('.csv'): df_novo = pd.read_csv(arquivo_upado, sep=';', encoding='utf-8')
         else: df_novo = pd.read_excel(arquivo_upado)
-        df_novo.to_csv(ARQUIVO_BASE, index=False)
+        df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
         st.cache_data.clear()
         st.success("Sincronização concluída.")
         st.rerun()
@@ -314,13 +275,12 @@ if df is not None:
                     st.session_state["N_GERADO"] = N_DEZENAS
                     st.session_state["gerado"] = True
 
-        # Renderiza a Grid (Fantasma se não gerou, Real se gerou)
         cfg_col = {"Sel": st.column_config.CheckboxColumn("Sel", default=False)}
         a1, a2, a3, a4 = st.tabs(["💎 Ranking Diamante", "❄️ Ranking Elite", "🔥 Ranking Geral", "🔄 Ranking Reversa"])
-        with a1: st.data_editor(st.session_state["df_diamante"], column_config=cfg_col, hide_index=True, key="e1", use_container_width=True)
-        with a2: st.data_editor(st.session_state["df_frias"], column_config=cfg_col, hide_index=True, key="e2", use_container_width=True)
-        with a3: st.data_editor(st.session_state["df_geral"], column_config=cfg_col, hide_index=True, key="e3", use_container_width=True)
-        with a4: st.data_editor(st.session_state["df_reversa"], column_config=cfg_col, hide_index=True, key="e4", use_container_width=True)
+        with a1: df_dia_ed = st.data_editor(st.session_state["df_diamante"], column_config=cfg_col, hide_index=True, key="e1", use_container_width=True)
+        with a2: df_fri_ed = st.data_editor(st.session_state["df_frias"], column_config=cfg_col, hide_index=True, key="e2", use_container_width=True)
+        with a3: df_ger_ed = st.data_editor(st.session_state["df_geral"], column_config=cfg_col, hide_index=True, key="e3", use_container_width=True)
+        with a4: df_rev_ed = st.data_editor(st.session_state["df_reversa"], column_config=cfg_col, hide_index=True, key="e4", use_container_width=True)
 
     with col_dir:
         st.markdown("<h3 style='text-align:center; color:#5C2D91; margin-top:0;'>Simulador da LOTOFÁCIL</h3>", unsafe_allow_html=True)
@@ -332,13 +292,12 @@ if df is not None:
             c_volante, c_resumo = st.columns([1, 1.2])
             
             with c_volante:
-                # O Volante Roxo Interativo (Agora vira bolinha sólida roxa ao clicar!)
+                # Volante
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
                         num = linha * 5 + col_idx + 1
                         selecionada = num in st.session_state["palpite_manual"]
-                        # Tipo muda dinamicamente para ativar o CSS customizado
                         tipo_btn = "primary" if selecionada else "secondary"
                         with cols[col_idx]:
                             st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
@@ -346,15 +305,19 @@ if df is not None:
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
                 st.markdown(f"<p style='font-size:12px; color:#6A6D70; margin-top:10px;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
-                c_btn_ver, c_btn_lim = st.columns([4, 1])
-                with c_btn_ver:
-                    verificar = st.button("VERIFICAR", use_container_width=True, type="primary")
-                with c_btn_lim:
-                    st.button("🗑️", on_click=limpar_volante, help="Limpar volante")
+                # BOTOES DE AÇÃO
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1: verificar = st.button("Verificar Histórico", use_container_width=True, type="primary")
+                with c_btn2: validar_listas = st.button("Validar nas Listas", use_container_width=True)
+                
+                c_btn3, c_btn4 = st.columns([4, 1])
+                with c_btn3: salvar_db = st.button("💾 Gravar no Banco", use_container_width=True)
+                with c_btn4: st.button("🗑️", on_click=limpar_volante, help="Limpar volante")
 
             with c_resumo:
-                st.markdown("<h5 style='text-align:center; color:#32363A;'>Eu teria ganho na Lotofácil?</h5>", unsafe_allow_html=True)
+                st.markdown("<h5 style='text-align:center; color:#32363A;'>Resumo do Palpite</h5>", unsafe_allow_html=True)
                 
+                # AÇÃO 1: VERIFICAR HISTÓRICO
                 if verificar and len(selecionadas) == 15:
                     dezenas_cols = [c for c in df.columns if "Dezena" in c]
                     if not dezenas_cols: dezenas_cols = df.columns[-15:]
@@ -365,16 +328,13 @@ if df is not None:
                     for _, row in df.iterrows():
                         jogo_hist = set(row[dezenas_cols].dropna().astype(int).values)
                         acertos = len(set_palpite.intersection(jogo_hist))
-                        if acertos >= 11:
-                            acertos_hist[acertos] += 1
+                        if acertos >= 11: acertos_hist[acertos] += 1
                     
                     total_premios = sum(acertos_hist.values())
                     st.success(f"Você teria ganhado prêmios em **{total_premios} concurso(s)** ao longo da história!")
-                    
                     st.markdown(f"""
                     <div style='background-color: white; border: 1px solid #7B2CBF; border-radius: 8px; padding: 15px;'>
-                        <p style='text-align:center; font-weight:bold; margin-bottom:5px;'>Resumo de Acertos:</p>
-                        <ul style='font-size: 14px; color:#5C2D91;'>
+                        <ul style='font-size: 14px; color:#5C2D91; margin:0;'>
                             <li>🚀 **15 dezenas**: {acertos_hist[15]} concursos.</li>
                             <li>💥 **14 dezenas**: {acertos_hist[14]} concursos.</li>
                             <li>✅ **13 dezenas**: {acertos_hist[13]} concursos.</li>
@@ -383,15 +343,80 @@ if df is not None:
                         </ul>
                     </div>
                     """, unsafe_allow_html=True)
-                elif verificar:
+                
+                # AÇÃO 2: VALIDAR NAS LISTAS
+                elif validar_listas and len(selecionadas) == 15:
+                    if not st.session_state.get("gerado"):
+                        st.warning("Gere as combinações nas tabelas ao lado primeiro!")
+                    else:
+                        set_sorteadas = set(selecionadas)
+                        n_gerado = st.session_state['N_GERADO']
+                        colunas_b = [f"B{i+1}" for i in range(n_gerado)]
+                        
+                        listas_para_conferir = [
+                            ("💎 Diamante", df_dia_ed), ("🔄 Reversa", df_rev_ed),
+                            ("❄️ Elite", df_fri_ed), ("🔥 Geral", df_ger_ed)
+                        ]
+
+                        melhor_acerto = 0
+                        mensagem = ""
+                        for nome_lista, df_lista in listas_para_conferir:
+                            if not df_lista.empty:
+                                for index, row in df_lista.iterrows():
+                                    # Convertendo os valores formatados (strings) de volta para int para comparar
+                                    jogo = set([int(row[col]) for col in colunas_b])
+                                    acertos = len(set_sorteadas.intersection(jogo))
+                                    if acertos > melhor_acerto:
+                                        melhor_acerto = acertos
+                                        mensagem = f"{acertos} acertos na linha #{row['Rank']} da lista {nome_lista}."
+
+                        if melhor_acerto >= 14: st.success(f"🎉 **CRUZAMENTO PERFEITO!** {mensagem}")
+                        elif melhor_acerto >= 11: st.info(f"👍 **CRUZAMENTO POSITIVO:** {mensagem}")
+                        else: st.error(f"📉 **FALHA:** Maior acerto nas listas geradas: {melhor_acerto}.")
+
+                # AÇÃO 3: GRAVAR NO BANCO
+                elif salvar_db and len(selecionadas) == 15:
+                    dezenas_cols = [c for c in df.columns if "Dezena" in c]
+                    if not dezenas_cols: dezenas_cols = df.columns[-15:]
+                    
+                    set_palpite = set(selecionadas)
+                    ja_sorteado = False
+                    for _, row in df.iterrows():
+                        jogo_hist = set(row[dezenas_cols].dropna().astype(int).values)
+                        if set_palpite == jogo_hist:
+                            ja_sorteado = True
+                            break
+                    
+                    if ja_sorteado:
+                        st.error("🚨 **Este jogo já existe no banco de dados histórico!** Gravação bloqueada.")
+                    else:
+                        conc_col = next((c for c in df.columns if 'Concurso' in c or 'Sorteio' in c or 'N°' in c), None)
+                        data_col = next((c for c in df.columns if 'Data' in c), None)
+                        
+                        novo_registro = {col: None for col in df.columns}
+                        if conc_col: 
+                            try: novo_registro[conc_col] = int(df[conc_col].max()) + 1
+                            except: novo_registro[conc_col] = len(df) + 1
+                        if data_col: 
+                            novo_registro[data_col] = datetime.today().strftime('%d/%m/%Y')
+                        
+                        for i, col in enumerate(dezenas_cols):
+                            if i < 15: novo_registro[col] = selecionadas[i]
+                        
+                        df_novo = pd.concat([df, pd.DataFrame([novo_registro])], ignore_index=True)
+                        df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
+                        st.cache_data.clear() # Limpa o cache para reler o CSV
+                        st.success("✅ **Jogo Gravado com Sucesso no Master Data!**")
+
+                elif (verificar or validar_listas or salvar_db):
                     st.error("Selecione exatamente 15 dezenas no volante ao lado!")
                 elif len(selecionadas) > 0:
                      st.markdown(f"<div style='border: 1px dashed #D9D9D9; border-radius:4px; padding:10px; font-size:12px; color:#6A6D70;'>Suas dezenas: {', '.join([f'{d:02d}' for d in selecionadas])}</div>", unsafe_allow_html=True)
                 else:
-                    st.caption("Complete 15 dezenas e clique em Verificar.")
+                    st.caption("Complete 15 dezenas para habilitar as ações.")
 
     # ==========================================
-    # SESSÃO INFERIOR: ÚLTIMOS RESULTADOS (Cards lado a lado e sem bugs de HTML)
+    # SESSÃO INFERIOR: ÚLTIMOS RESULTADOS (Cards lado a lado)
     # ==========================================
     st.markdown('<div class="faixa-resultados">Últimos resultados da Lotofácil</div>', unsafe_allow_html=True)
     
@@ -402,7 +427,6 @@ if df is not None:
     
     ultimos_3 = df.tail(3).iloc[::-1] 
     
-    # Usa colunas nativas do Streamlit para blindar o layout
     col_card1, col_card2, col_card3 = st.columns(3)
     colunas_cards = [col_card1, col_card2, col_card3]
     
@@ -413,7 +437,6 @@ if df is not None:
         
         bolinhas_html = "".join([f'<div class="bolinha-roxa">{d:02d}</div>' for d in dezenas])
         
-        # HTML sem indentação para não bugar o interpretador de código do Streamlit
         html_card = f"""
 <div class="card-resultado">
 <div class="card-resultado-header">
