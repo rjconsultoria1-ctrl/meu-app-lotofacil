@@ -8,26 +8,26 @@ from datetime import datetime
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA (WIDE E ÍCONE)
 # ==========================================
-st.set_page_config(page_title="SAP Fiori | Lotofácil", page_icon="🔷", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Gerador VIP | Fiori", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 2. INJEÇÃO DE CSS - TEMA SAP MORNING HORIZON
+# 2. INJEÇÃO DE CSS - TEMA SAP MORNING HORIZON & AJUSTES
 # ==========================================
 st.markdown("""
     <style>
-        /* Esconde elementos nativos do Streamlit (Menu, Sidebar, Footer) */
+        /* Esconde elementos nativos do Streamlit */
         [data-testid="collapsedControl"] { display: none; }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         
-        /* Fundo e tipografia geral Fiori Horizon */
+        /* Fundo e tipografia geral */
         .stApp { 
             background-color: #F4F4F6; 
             font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; 
         }
         
-        /* Ajuste do container principal */
+        /* Ajuste do container principal (Tirando margens nativas) */
         .block-container { 
             padding-top: 0rem !important; 
             padding-bottom: 2rem; 
@@ -36,18 +36,30 @@ st.markdown("""
             padding-right: 0;
         }
 
-        /* --- SHELL BAR --- */
+        /* --- SHELL BAR FIXA (Corrigido o Z-Index) --- */
         .fiori-shell {
             background-color: #354A5F;
             color: white;
-            height: 44px;
+            height: 48px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 1rem;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            padding: 0 2rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            z-index: 999; /* Fica acima de tudo */
         }
-        .fiori-shell-logo { font-weight: bold; font-size: 14px; letter-spacing: 0.5px; }
+        .fiori-shell-logo { font-weight: bold; font-size: 15px; letter-spacing: 0.5px; }
+        
+        /* Container do Botão de Logoff (Fixo no canto direito) */
+        .logoff-container {
+            position: fixed;
+            top: 6px;
+            right: 20px;
+            z-index: 1000;
+        }
         
         /* --- DYNAMIC PAGE HEADER --- */
         .fiori-header {
@@ -55,9 +67,17 @@ st.markdown("""
             padding: 1.5rem 2rem 1rem 2rem;
             box-shadow: inset 0 -1px 0 #D9D9D9;
             margin-bottom: 20px;
+            margin-top: 48px; /* Empurra o conteúdo para baixo da Shell Bar */
         }
-        .fiori-title { font-size: 20px; font-weight: bold; color: #1D2D3E; margin-bottom: 5px; }
-        .fiori-subtitle { font-size: 13px; color: #556B82; }
+        .fiori-title { font-size: 22px; font-weight: bold; color: #1D2D3E; margin-bottom: 5px; }
+        .fiori-subtitle { font-size: 14px; color: #556B82; }
+        
+        /* --- MARGENS LATERAIS (Respiro do Conteúdo) --- */
+        .main-content { 
+            padding: 0 5%; 
+            max-width: 1400px; 
+            margin: 0 auto; 
+        }
         
         /* --- BOTÕES PADRÃO FIORI --- */
         .stButton>button { 
@@ -70,20 +90,35 @@ st.markdown("""
         }
         .stButton>button:hover { background-color: #0050B3; border-color: #0050B3; }
         
-        /* Botões Secundários e Volante */
+        /* O Botão de Logoff precisa de um estilo mais discreto (transparente) */
+        .logoff-container .stButton>button {
+            background-color: transparent !important;
+            border: 1px solid white !important;
+            color: white !important;
+            height: 34px !important;
+            padding: 0 15px !important;
+        }
+        .logoff-container .stButton>button:hover {
+            background-color: rgba(255,255,255,0.2) !important;
+        }
+
+        /* --- O VOLANTE (Bolinhas 🟢/⚪) --- 
+           Pegando apenas o container com borda para não afetar o resto */
         div[data-testid="stVerticalBlockBorderWrapper"] .stButton>button { 
             background-color: white;
-            color: #0070F2;
-            border: 1px solid #0070F2;
-            height: 40px !important;
+            color: #32363A;
+            border: 1px solid #D9D9D9;
+            height: 48px !important;
+            border-radius: 50% !important; /* Retorno da bolinha perfeita */
             padding: 0px !important;
-            font-size: 15px !important;
+            font-size: 14px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         div[data-testid="stVerticalBlockBorderWrapper"] .stButton>button:hover {
             background-color: #E5F0FA;
+            border-color: #0070F2;
         }
 
-        .main-content { padding: 0 2rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -101,48 +136,47 @@ def toggle_dezena(dezena):
     elif len(palpite) < 15: palpite.add(dezena)
     st.session_state["palpite_manual"] = palpite
 
-# --- TELA DE LOGIN CORRIGIDA (Streamlit Nativo) ---
+# --- TELA DE LOGIN (Nossa Marca!) ---
 if not st.session_state["logged_in"]:
-    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        login_box = st.container(border=True)
-        with login_box:
-            st.markdown("<h2 style='text-align:center; color:#0070F2; margin-bottom:0;'>🔷 SAP BTP</h2>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center; color:#556B82;'>Cloud Identity Services</p><hr>", unsafe_allow_html=True)
-            
-            st.text_input("User Name or Email", value="consultor.sd", disabled=True)
-            senha = st.text_input("Password", type="password", placeholder="Enter your password")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Log On", use_container_width=True):
-                if senha == "abap123":
-                    st.session_state["logged_in"] = True
-                    st.rerun()
-                else:
-                    st.error("Authentication failed. Please check your credentials.")
-    st.stop() # Trava tudo aqui até logar!
+        # Container sem borda nativa para não bugar o CSS do Volante
+        st.markdown("""
+            <div style="background-color: white; padding: 3rem 2.5rem; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,20,50,0.1); text-align: center;">
+                <h2 style='color:#0070F2; margin-bottom:5px;'>💎 Gerador VIP Lotofácil</h2>
+                <p style='color:#556B82; font-size: 14px; margin-bottom: 20px;'>Acesso Restrito</p>
+        """, unsafe_allow_html=True)
+        
+        st.text_input("Usuário", value="consultor.sd", disabled=True)
+        senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Entrar", use_container_width=True):
+            if senha == "abap123":
+                st.session_state["logged_in"] = True
+                st.rerun()
+            else:
+                st.error("Falha na autenticação. Verifique suas credenciais.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
 
 # ==========================================
 # 4. O APLICATIVO FIORI (Pós-Login)
 # ==========================================
 
-# --- SHELL BAR ---
-col_logo, col_logout = st.columns([10, 1])
-with col_logo:
-    st.markdown("""
-        <div class="fiori-shell" style="position: absolute; top: 0; left: 0; width: 100vw; z-index: 100;">
-            <div class="fiori-shell-logo">🔷 SAP | Predictive Analytics Cockpit</div>
-        </div>
-    """, unsafe_allow_html=True)
-with col_logout:
-    st.markdown("<div style='margin-top: 5px; position: absolute; right: 20px; z-index: 101;'>", unsafe_allow_html=True)
-    if st.button("Logoff"):
-        st.session_state["logged_in"] = False
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+# --- SHELL BAR FIXA E BOTÃO DE LOGOFF ---
+st.markdown("""
+    <div class="fiori-shell">
+        <div class="fiori-shell-logo">🔷 SAP Fiori | Gerador VIP Lotofácil</div>
+    </div>
+""", unsafe_allow_html=True)
 
-st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
+st.markdown('<div class="logoff-container">', unsafe_allow_html=True)
+if st.button("Sair (Logoff)", key="btn_sair"):
+    st.session_state["logged_in"] = False
+    st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CÉREBRO DA OPERAÇÃO (MEMÓRIA CACHE) ---
 @st.cache_data(show_spinner=False)
@@ -203,10 +237,9 @@ def processar_motor_matematico(df_dados, n_dezenas):
     lista_reversa.sort(key=lambda x: x[0], reverse=True)
 
     def formatar(lista):
-        return [{"Select": False, "Rank": r, "Score": round(s, 2), **{f"B{i+1}": d for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+        return [{"Selecionar": False, "Rank": r, "Pontuação": round(s, 2), **{f"B{i+1}": d for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
 
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
-
 
 # --- DYNAMIC PAGE HEADER E LÓGICA DE DADOS ---
 df = None
@@ -220,16 +253,17 @@ if os.path.exists(ARQUIVO_BASE):
 
 st.markdown("""
     <div class="fiori-header">
-        <div class="fiori-title">Gerador Estratégico Lotofácil VIP</div>
-        <div class="fiori-subtitle">Otimização combinatória baseada em histórico e regras matemáticas (Clean Core API).</div>
+        <div class="fiori-title">Painel de Otimização e Simulador VIP</div>
+        <div class="fiori-subtitle">Otimização combinatória baseada em histórico e regras matemáticas.</div>
     </div>
 """, unsafe_allow_html=True)
 
+# Abre a margem espaçosa do Main Content
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-with st.expander("⚙️ Settings (Master Data Upload)"):
+with st.expander("⚙️ Configurações (Atualizar Base de Dados)"):
     if df is not None: st.info(f"Status do Banco: ONLINE | {len(df)} sorteios sincronizados.")
-    st.write("Atualizar Base de Dados:")
+    st.write("Fazer Upload de novo Master Data:")
     arquivo_upado = st.file_uploader("", type=["csv", "xlsx"], label_visibility="collapsed")
     if arquivo_upado is not None:
         if arquivo_upado.name.endswith('.csv'):
@@ -238,17 +272,17 @@ with st.expander("⚙️ Settings (Master Data Upload)"):
         else: df_novo = pd.read_excel(arquivo_upado)
         df_novo.to_csv(ARQUIVO_BASE, index=False)
         st.cache_data.clear()
-        st.success("Master Data atualizado. Sincronização concluída.")
+        st.success("Base de dados atualizada com sucesso.")
         st.rerun()
 
 if df is not None:
     col_filtro, col_btn = st.columns([3, 1])
     with col_filtro:
-        N_DEZENAS = st.radio("Selecione o Target (Tamanho do Jogo):", [15, 16, 17], horizontal=True)
+        N_DEZENAS = st.radio("Selecione o tamanho do jogo:", [15, 16, 17], horizontal=True)
     with col_btn:
         st.write("") 
-        if st.button("▶ Execute Prediction", use_container_width=True):
-            with st.spinner("Executing background job (In-Memory Processing)..."):
+        if st.button("▶ Gerar Combinações", use_container_width=True):
+            with st.spinner("Processando combinações em background..."):
                 dia_full, fri_full, ger_full, rev_full = processar_motor_matematico(df, N_DEZENAS)
                 
                 st.session_state["df_diamante"] = dia_full.head(100).sample(min(10, len(dia_full))).sort_values("Rank")
@@ -260,9 +294,9 @@ if df is not None:
                 st.session_state["gerado"] = True
 
     if st.session_state.get("gerado"):
-        st.markdown(f"#### 📑 Results Object Page ({st.session_state['N_GERADO']} Dezenas)")
+        st.markdown(f"#### 📑 Resultados Gerados ({st.session_state['N_GERADO']} Dezenas)")
         
-        cfg_coluna = {"Select": st.column_config.CheckboxColumn("Select", default=False)}
+        cfg_coluna = {"Selecionar": st.column_config.CheckboxColumn("Selecionar", default=False)}
         aba1, aba2, aba3, aba4 = st.tabs(["💎 Diamante", "❄️ Elite", "🔥 Geral", "🔄 Reversa"])
         
         with aba1: df_diamante_edit = st.data_editor(st.session_state["df_diamante"], column_config=cfg_coluna, hide_index=True, key="ed_dia", use_container_width=True)
@@ -270,88 +304,96 @@ if df is not None:
         with aba3: df_geral_edit = st.data_editor(st.session_state["df_geral"], column_config=cfg_coluna, hide_index=True, key="ed_ger", use_container_width=True)
         with aba4: df_reversa_edit = st.data_editor(st.session_state["df_reversa"], column_config=cfg_coluna, hide_index=True, key="ed_rev", use_container_width=True)
 
-        st.markdown("---")
-        
-        st.markdown("#### 🛠️ Object Simulation Panel")
-        
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            volante = st.container(border=True)
-            with volante:
-                st.markdown("<p style='text-align: center; color: #556B82; font-weight: bold;'>Interactive Data Grid</p>", unsafe_allow_html=True)
-                for linha in range(5):
-                    cols = st.columns(5)
-                    for col_idx in range(5):
-                        num = linha * 5 + col_idx + 1
-                        selecionada = num in st.session_state["palpite_manual"]
-                        label = f"🟦 {num:02d}" if selecionada else f"⬜ {num:02d}"
-                        with cols[col_idx]:
-                            st.button(label, key=f"btn_{num}", on_click=toggle_dezena, args=(num,), use_container_width=True)
-        
-        selecionadas = sorted(list(st.session_state["palpite_manual"]))
-        st.caption(f"Items selected ({len(selecionadas)}/15): " + " - ".join([f"{d:02d}" for d in selecionadas]))
+    # ==========================================
+    # VOLANTE INDEPENDENTE (Sempre Visível)
+    # ==========================================
+    st.markdown("---")
+    st.markdown("#### 🛠️ Painel de Simulação Livre (Volante)")
+    
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        volante = st.container(border=True) # A mágica do CSS acontece aqui dentro
+        with volante:
+            st.markdown("<p style='text-align: center; color: #556B82; font-weight: bold;'>Marque suas 15 dezenas abaixo</p>", unsafe_allow_html=True)
+            for linha in range(5):
+                cols = st.columns(5)
+                for col_idx in range(5):
+                    num = linha * 5 + col_idx + 1
+                    selecionada = num in st.session_state["palpite_manual"]
+                    icone = "🟢" if selecionada else "⚪"
+                    with cols[col_idx]:
+                        st.button(f"{icone}\n{num:02d}", key=f"btn_{num}", on_click=toggle_dezena, args=(num,), use_container_width=True)
+    
+    selecionadas = sorted(list(st.session_state["palpite_manual"]))
+    st.caption(f"Dezenas apontadas ({len(selecionadas)}/15): " + " - ".join([f"{d:02d}" for d in selecionadas]))
 
-        if len(selecionadas) == 15:
-            col_acao1, col_acao2 = st.columns(2)
+    if len(selecionadas) == 15:
+        col_acao1, col_acao2 = st.columns(2)
+        
+        with col_acao1:
+            # A validação nas listas só funciona se as listas foram geradas!
+            pode_validar = st.session_state.get("gerado", False)
+            if st.button("✔ Validar nas Listas Geradas", use_container_width=True, disabled=not pode_validar):
+                set_sorteadas = set(selecionadas)
+                n_gerado = st.session_state['N_GERADO']
+                colunas_b = [f"B{i+1}" for i in range(n_gerado)]
+                
+                listas_para_conferir = [
+                    ("💎 Diamante", df_diamante_edit), ("🔄 Reversa", df_reversa_edit),
+                    ("❄️ Elite", df_frias_edit), ("🔥 Geral", df_geral_edit)
+                ]
+
+                melhor_acerto_meus, qtd_jogos_marcados, mensagem_meus = 0, 0, ""
+                melhor_acerto_sistema, mensagem_sistema = 0, ""
+
+                for nome_lista, df_lista in listas_para_conferir:
+                    if not df_lista.empty:
+                        for index, row in df_lista.iterrows():
+                            jogo = set(row[colunas_b].values)
+                            acertos = len(set_sorteadas.intersection(jogo))
+                            
+                            if row["Selecionar"]:
+                                qtd_jogos_marcados += 1
+                                if acertos > melhor_acerto_meus:
+                                    melhor_acerto_meus = acertos
+                                    mensagem_meus = f"{acertos} acertos no Jogo #{row['Rank']} ({nome_lista})."
+                            else:
+                                if acertos > melhor_acerto_sistema:
+                                    melhor_acerto_sistema = acertos
+                                    mensagem_sistema = f"{acertos} acertos no Jogo #{row['Rank']} ({nome_lista})."
+
+                st.markdown("##### 📌 Desempenho (Sua Seleção)")
+                if qtd_jogos_marcados == 0: st.warning("Nenhum item marcado nas listas acima.")
+                else:
+                    if melhor_acerto_meus >= 14: st.success(f"**[SUCESSO]** {mensagem_meus}")
+                    elif melhor_acerto_meus >= 11: st.info(f"**[LUCRO]** Melhor jogo: {mensagem_meus}")
+                    else: st.error(f"**[BAIXO]** Maior acerto: {melhor_acerto_meus}.")
+
+                st.markdown("##### 🤖 Desempenho (Motor Base)")
+                st.write(f"O motor de background (não selecionados) alcançou **{mensagem_sistema}**.")
             
-            with col_acao1:
-                if st.button("✔ Validate Document", use_container_width=True):
-                    set_sorteadas = set(selecionadas)
-                    n_gerado = st.session_state['N_GERADO']
-                    colunas_b = [f"B{i+1}" for i in range(n_gerado)]
-                    
-                    listas_para_conferir = [
-                        ("💎 Diamante", df_diamante_edit), ("🔄 Reversa", df_reversa_edit),
-                        ("❄️ Elite", df_frias_edit), ("🔥 Geral", df_geral_edit)
-                    ]
+            if not pode_validar:
+                st.caption("Gere as combinações primeiro para usar este botão.")
 
-                    melhor_acerto_meus, qtd_jogos_marcados, mensagem_meus = 0, 0, ""
-                    melhor_acerto_sistema, mensagem_sistema = 0, ""
-
-                    for nome_lista, df_lista in listas_para_conferir:
-                        if not df_lista.empty:
-                            for index, row in df_lista.iterrows():
-                                jogo = set(row[colunas_b].values)
-                                acertos = len(set_sorteadas.intersection(jogo))
-                                
-                                if row["Select"]:
-                                    qtd_jogos_marcados += 1
-                                    if acertos > melhor_acerto_meus:
-                                        melhor_acerto_meus = acertos
-                                        mensagem_meus = f"{acertos} matches in Document #{row['Rank']} ({nome_lista})."
-                                else:
-                                    if acertos > melhor_acerto_sistema:
-                                        melhor_acerto_sistema = acertos
-                                        mensagem_sistema = f"{acertos} matches in Document #{row['Rank']} ({nome_lista})."
-
-                    st.markdown("##### 📌 User Selection Log")
-                    if qtd_jogos_marcados == 0: st.warning("No items selected for validation.")
-                    else:
-                        if melhor_acerto_meus >= 14: st.success(f"**[CRITICAL SUCCESS]** {mensagem_meus}")
-                        elif melhor_acerto_meus >= 11: st.info(f"**[ROI APPROVED]** Best document: {mensagem_meus}")
-                        else: st.error(f"**[DEVIATION]** Max matches: {melhor_acerto_meus}.")
-
-                    st.markdown("##### 🤖 Background Engine Log")
-                    st.write(f"The unselected engine reached **{mensagem_sistema}**.")
-
-            with col_acao2:
-                if st.button("🔎 Master Data Query (History Check)", use_container_width=True):
-                    set_palpite = set(selecionadas)
-                    dezenas_cols = [col for col in df.columns if "Dezena" in col]
-                    if not dezenas_cols: dezenas_cols = df.columns[-15:]
-                    
-                    concurso_col = next((c for c in df.columns if 'Sorteio' in c or 'Concurso' in c or 'N°' in c), None)
-                    data_col = next((c for c in df.columns if 'Data' in c), None)
-                    
-                    ja_sorteado = False
-                    for idx, row in df.iterrows():
-                        jogo_hist = set(row[dezenas_cols].dropna().astype(int).values)
-                        if set_palpite == jogo_hist:
-                            conc = row[concurso_col] if concurso_col else f"Line {idx}"
-                            data_s = row[data_col] if data_col else "Unknown"
-                            st.error(f"🚨 **[DATA DUPLICATION ERROR]** Sequence found in Document **{conc}** ({data_s}). Execution blocked by statistical rules!")
-                            ja_sorteado = True
-                            break
-                    if not ja_sorteado: st.success("✅ **[VALIDATION PASSED]** Sequence is unique. Ready for processing.")
+        with col_acao2:
+            # O Oráculo funciona sempre, independente de ter gerado combinações!
+            if st.button("🔎 Consultar Oráculo (Banco Histórico)", use_container_width=True):
+                set_palpite = set(selecionadas)
+                dezenas_cols = [col for col in df.columns if "Dezena" in col]
+                if not dezenas_cols: dezenas_cols = df.columns[-15:]
+                
+                concurso_col = next((c for c in df.columns if 'Sorteio' in c or 'Concurso' in c or 'N°' in c), None)
+                data_col = next((c for c in df.columns if 'Data' in c), None)
+                
+                ja_sorteado = False
+                for idx, row in df.iterrows():
+                    jogo_hist = set(row[dezenas_cols].dropna().astype(int).values)
+                    if set_palpite == jogo_hist:
+                        conc = row[concurso_col] if concurso_col else f"Linha {idx}"
+                        data_s = row[data_col] if data_col else "Desconhecida"
+                        st.error(f"🚨 **[JOGO DUPLICADO]** Combinação já existente no Concurso **{conc}** ({data_s}). Aposta bloqueada por regra estatística!")
+                        ja_sorteado = True
+                        break
+                if not ja_sorteado: st.success("✅ **[VALIDADO]** Combinação inédita. Liberado para aposta oficial.")
 
 st.markdown('</div>', unsafe_allow_html=True)
