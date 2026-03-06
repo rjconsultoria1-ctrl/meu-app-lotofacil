@@ -15,7 +15,7 @@ st.set_page_config(page_title="SAP Fiori | Lotofácil", page_icon="🔷", layout
 # ==========================================
 st.markdown("""
     <style>
-        /* Esconde elementos nativos do Streamlit (Menu, Sidebar, Footer) para imersão total Fiori */
+        /* Esconde elementos nativos do Streamlit (Menu, Sidebar, Footer) */
         [data-testid="collapsedControl"] { display: none; }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
@@ -23,11 +23,11 @@ st.markdown("""
         
         /* Fundo e tipografia geral Fiori Horizon */
         .stApp { 
-            background-color: #F4F4F6; /* Cinza bem claro do Fiori */
+            background-color: #F4F4F6; 
             font-family: "72", "Helvetica Neue", Helvetica, Arial, sans-serif; 
         }
         
-        /* Ajuste do container principal para grudar a Shell Bar no topo */
+        /* Ajuste do container principal */
         .block-container { 
             padding-top: 0rem !important; 
             padding-bottom: 2rem; 
@@ -36,34 +36,9 @@ st.markdown("""
             padding-right: 0;
         }
 
-        /* --- TELA DE LOGIN (Cloud Identity) --- */
-        .login-bg {
-            background: linear-gradient(135deg, #EBEFF5 0%, #D5DFED 100%);
-            height: 100vh;
-            width: 100vw;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .login-box {
-            background-color: white;
-            padding: 3rem 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,20,50,0.1);
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-        }
-        .login-logo { font-size: 24px; font-weight: bold; color: #0070F2; margin-bottom: 5px; }
-        .login-subtitle { font-size: 14px; color: #556B82; margin-bottom: 30px; }
-
         /* --- SHELL BAR --- */
         .fiori-shell {
-            background-color: #354A5F; /* Cor Dark Horizon da Shell Bar */
+            background-color: #354A5F;
             color: white;
             height: 44px;
             display: flex;
@@ -108,7 +83,6 @@ st.markdown("""
             background-color: #E5F0FA;
         }
 
-        /* O Container Central do App */
         .main-content { padding: 0 2rem; }
     </style>
 """, unsafe_allow_html=True)
@@ -127,31 +101,27 @@ def toggle_dezena(dezena):
     elif len(palpite) < 15: palpite.add(dezena)
     st.session_state["palpite_manual"] = palpite
 
-# --- TELA DE LOGIN (SAP Cloud Identity) ---
+# --- TELA DE LOGIN CORRIGIDA (Streamlit Nativo) ---
 if not st.session_state["logged_in"]:
-    st.markdown('<div class="login-bg">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1.5, 1])
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown("""
-            <div class="login-box">
-                <div class="login-logo">🔷 SAP BTP</div>
-                <div class="login-subtitle">Cloud Identity Services</div>
-        """, unsafe_allow_html=True)
-        
-        st.write("**Sign In**")
-        usuario = st.text_input("User Name or Email", value="consultor.sd", disabled=True)
-        senha = st.text_input("Password", type="password", placeholder="Enter your password")
-        
-        if st.button("Log On", use_container_width=True):
-            if senha == "abap123":
-                st.session_state["logged_in"] = True
-                st.rerun()
-            else:
-                st.error("Authentication failed.")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # Interrompe a execução aqui se não estiver logado
+        login_box = st.container(border=True)
+        with login_box:
+            st.markdown("<h2 style='text-align:center; color:#0070F2; margin-bottom:0;'>🔷 SAP BTP</h2>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; color:#556B82;'>Cloud Identity Services</p><hr>", unsafe_allow_html=True)
+            
+            st.text_input("User Name or Email", value="consultor.sd", disabled=True)
+            senha = st.text_input("Password", type="password", placeholder="Enter your password")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Log On", use_container_width=True):
+                if senha == "abap123":
+                    st.session_state["logged_in"] = True
+                    st.rerun()
+                else:
+                    st.error("Authentication failed. Please check your credentials.")
+    st.stop() # Trava tudo aqui até logar!
 
 # ==========================================
 # 4. O APLICATIVO FIORI (Pós-Login)
@@ -172,7 +142,7 @@ with col_logout:
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True) # Espaçador da Shell Bar
+st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
 
 # --- CÉREBRO DA OPERAÇÃO (MEMÓRIA CACHE) ---
 @st.cache_data(show_spinner=False)
@@ -272,12 +242,11 @@ with st.expander("⚙️ Settings (Master Data Upload)"):
         st.rerun()
 
 if df is not None:
-    # Barra de Filtros (Fiori Filter Bar)
     col_filtro, col_btn = st.columns([3, 1])
     with col_filtro:
         N_DEZENAS = st.radio("Selecione o Target (Tamanho do Jogo):", [15, 16, 17], horizontal=True)
     with col_btn:
-        st.write("") # Spacer
+        st.write("") 
         if st.button("▶ Execute Prediction", use_container_width=True):
             with st.spinner("Executing background job (In-Memory Processing)..."):
                 dia_full, fri_full, ger_full, rev_full = processar_motor_matematico(df, N_DEZENAS)
@@ -303,7 +272,6 @@ if df is not None:
 
         st.markdown("---")
         
-        # --- O VOLANTE (FIORI FORM PANEL) ---
         st.markdown("#### 🛠️ Object Simulation Panel")
         
         c1, c2, c3 = st.columns([1, 2, 1])
@@ -316,10 +284,7 @@ if df is not None:
                     for col_idx in range(5):
                         num = linha * 5 + col_idx + 1
                         selecionada = num in st.session_state["palpite_manual"]
-                        
-                        # Truque visual: Se selecionado, usamos um emoji de check azul, senão, número normal
                         label = f"🟦 {num:02d}" if selecionada else f"⬜ {num:02d}"
-                        
                         with cols[col_idx]:
                             st.button(label, key=f"btn_{num}", on_click=toggle_dezena, args=(num,), use_container_width=True)
         
