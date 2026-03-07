@@ -11,7 +11,7 @@ from datetime import datetime
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 2. INJEÇÃO DE CSS (ESTILIZAÇÃO TOTAL E RESPONSIVA)
+# 2. INJEÇÃO DE CSS GLOBAL E HEADER
 # ==========================================
 st.markdown("""
     <style>
@@ -29,29 +29,6 @@ st.markdown("""
             padding-right: 1rem;
         }
 
-        /* --- BARRA FIORI E BOTÃO SAIR --- */
-        .fiori-header-bar {
-            background-color: #354A5F; color: white; padding: 10px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            font-family: Arial, sans-serif; position: fixed;
-            top: 0; left: 0; width: 100vw; z-index: 998;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-        }
-        .header-spacer { margin-top: 50px; }
-        
-        /* Container flutuante para o botão Sair real */
-        .btn-sair-container {
-            position: fixed; top: 4px; right: 20px; z-index: 1000;
-        }
-        .btn-sair-container .stButton > button {
-            background-color: transparent !important; border: none !important;
-            color: white !important; font-size: 14px; padding: 5px 10px !important;
-            height: auto !important;
-        }
-        .btn-sair-container .stButton > button:hover {
-            color: #6CB2EB !important; text-decoration: underline; background-color: transparent !important;
-        }
-
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
@@ -60,34 +37,41 @@ st.markdown("""
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
 
-        /* --- O VOLANTE ROXO E RESPONSIVIDADE MOBILE --- */
-        /* Formata os botões do simulador (Grid 5x5) */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] .stButton > button { 
-            border-radius: 50% !important; 
-            height: 42px !important; width: 42px !important;
-            padding: 0 !important; font-size: 15px !important;
-            margin: auto; display: flex; justify-content: center; align-items: center;
+        /* --- CSS BLINDADO PARA O VOLANTE (Sem usar o frágil :has) --- */
+        /* Seleciona colunas que fazem parte de um bloco exato de 5 (Ou seja, as linhas do nosso volante) */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button {
+            border-radius: 50% !important;
+            height: 40px !important; width: 40px !important;
+            padding: 0 !important; font-size: 14px !important;
+            font-weight: bold !important; margin: auto !important;
+            display: flex !important; justify-content: center !important; align-items: center !important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
         }
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] .stButton > button[kind="secondary"] {
+
+        /* Cor Bolinha Desmarcada (Branca com borda roxa) */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button[kind="secondary"],
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="secondary"] {
             background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
         }
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] .stButton > button[kind="primary"] {
-            background-color: #5C2D91 !important; color: white !important; border: 2px solid #5C2D91 !important;
+
+        /* Cor Bolinha Marcada (Totalmente Roxa - Igual .bolinha-roxa) */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button[kind="primary"],
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="primary"] {
+            background-color: #5C2D91 !important; color: white !important; border: none !important;
         }
 
-        /* Mágica Responsiva: Trava as 5 colunas do volante para NÃO empilharem no celular */
+        /* Mágica Responsiva forçada para Mobile */
         @media (max-width: 640px) {
-            /* Identifica colunas agrupadas de 5 (nosso volante) e força exibição em linha */
-            div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) {
-                flex-wrap: nowrap !important;
-                gap: 5px !important;
-                justify-content: center;
+            /* Transforma os blocos do simulador em linhas horizontais à força */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+                display: flex !important; flex-direction: row !important; flex-wrap: wrap !important;
+                gap: 2px !important; justify-content: center !important;
             }
-            div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) > div[data-testid="column"] {
-                width: 20% !important;
-                flex: 1 1 20% !important;
-                min-width: 0 !important;
+            /* Garante que as 5 bolinhas caibam lado a lado (18% de largura cada) */
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5),
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
+                flex: 0 0 18% !important; padding: 1px !important; min-width: 0 !important;
             }
         }
         
@@ -181,20 +165,42 @@ if not st.session_state["logged_in"]:
 # 4. O APLICATIVO (Layout Analítico)
 # ==========================================
 
-# --- BARRA FIORI E BOTÃO SAIR (FUNCIONAL) ---
+# --- BOTÃO SAIR BLINDADO (Flutua exatamente na barra Fiori) ---
+st.markdown("""
+    <style>
+        /* Pega o segundo container renderizado (que será o botão Sair) e posiciona no topo direito */
+        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) {
+            position: fixed; top: 10px; right: 20px; z-index: 1000; width: auto;
+        }
+        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button {
+            background-color: transparent !important; border: 1px solid rgba(255,255,255,0.5) !important;
+            color: white !important; padding: 2px 15px !important; height: 32px !important; line-height: 1 !important;
+        }
+        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button:hover {
+            background-color: rgba(255,255,255,0.2) !important; border-color: white !important;
+        }
+        .fiori-header-bar {
+            background-color: #354A5F; color: white; padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: Arial, sans-serif; position: fixed; top: 0; left: 0; width: 100vw; z-index: 998;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+        .header-spacer { margin-top: 50px; }
+    </style>
+""", unsafe_allow_html=True)
+
+# O BOTÃO DEVE ESTAR AQUI PARA O CSS NTH-CHILD(2) FUNCIONAR
+if st.button("Sair"):
+    st.session_state["logged_in"] = False
+    st.rerun()
+
 st.markdown("""
     <div class="fiori-header-bar">
         <div><span style="color:#6CB2EB;">💎 Gerador VIP</span> | Painel Simulador Lotofácil</div>
-        <div>🔍 🔔 ⚙️ | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div> </div>
+        <div>🔍 🔔 ⚙️ | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+    </div>
     <div class="header-spacer"></div>
 """, unsafe_allow_html=True)
-
-# Botão Sair Real flutuando no topo direito
-st.markdown('<div class="btn-sair-container">', unsafe_allow_html=True)
-if st.button("Sair", key="btn_sair_topo"):
-    st.session_state["logged_in"] = False
-    st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("""
     <div class="page-title-section">
@@ -323,7 +329,7 @@ if df is not None:
             c_volante, c_resumo = st.columns([1, 1.2])
             
             with c_volante:
-                # Volante com CSS injetado para travar no mobile
+                # Volante (A mágica do CSS acontece aqui)
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
@@ -437,7 +443,6 @@ if df is not None:
                         df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
                         st.cache_data.clear()
                         st.success("✅ **Jogo Gravado com Sucesso! Atualizando painel...**")
-                        # O GATILHO MÁGICO PARA ATUALIZAR OS CARDS NA HORA
                         st.rerun() 
 
                 elif (verificar or validar_listas or salvar_db):
@@ -448,7 +453,7 @@ if df is not None:
                     st.caption("Complete 15 dezenas para habilitar as ações.")
 
     # ==========================================
-    # SESSÃO INFERIOR: ÚLTIMOS RESULTADOS (Cards lado a lado)
+    # SESSÃO INFERIOR: ÚLTIMOS RESULTADOS
     # ==========================================
     st.markdown('<div class="faixa-resultados">Últimos resultados da Lotofácil</div>', unsafe_allow_html=True)
     
