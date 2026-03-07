@@ -7,6 +7,7 @@ import os
 import random
 import threading
 import math
+import time
 from datetime import datetime
 
 # ==========================================
@@ -264,21 +265,24 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
 # ------------------------------------------
-# TRABALHADOR FANTASMA & MEMÓRIA
+# TRABALHADOR FANTASMA COM FREIO (ARREFECIMENTO)
 # ------------------------------------------
 def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
     pasta_cache = "memoria_calculos"
     if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
+    
     for motor_id in [1, 2, 3, 4]:
         for n_dez in [15, 16, 17]:
             arq_meta = f"{pasta_cache}/M{motor_id}_{n_dez}_meta.txt"
             prefixo_csv = f"{pasta_cache}/M{motor_id}_{n_dez}"
             precisa_calcular = True
+            
             if os.path.exists(arq_meta):
                 with open(arq_meta, "r") as f:
                     try:
                         if int(f.read().strip()) == tamanho_banco_atual: precisa_calcular = False 
                     except: pass
+                    
             if precisa_calcular:
                 try:
                     dia, fri, ger, rev = executar_logica_motora(df_dados, n_dez, motor_id)
@@ -287,6 +291,9 @@ def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
                     ger.to_csv(f"{prefixo_csv}_ger.csv", sep=";", index=False)
                     rev.to_csv(f"{prefixo_csv}_rev.csv", sep=";", index=False)
                     with open(arq_meta, "w") as f: f.write(str(tamanho_banco_atual))
+                    
+                    # O SISTEMA DE ARREFECIMENTO: Pára por 4 segundos para o Streamlit não crashar!
+                    time.sleep(4)
                 except: pass
 
 def processar_com_memoria(df_dados, n_dezenas, motor_selecionado):
@@ -382,7 +389,7 @@ if df is not None:
                     fantasma.start()
                     
                     if dia.empty: st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento.")
-                    else: st.toast("✅ Motor carregado! (Trabalhador Fantasma operando em background...)")
+                    else: st.toast("✅ Motor carregado! (Trabalhador Fantasma operando com freio ativado...)")
                     
                     st.session_state["df_diamante"] = dia.head(500) if not dia.empty else dia
                     st.session_state["df_reversa"] = rev.head(500) if not rev.empty else rev
@@ -566,25 +573,22 @@ if df is not None:
 # ------------------------------------------
 components.html("""
     <script>
-        // 1. Esconde o iframe invisível
         const iframe = window.frameElement;
         if(iframe){
             const iframeContainer = iframe.closest('.element-container');
             if(iframeContainer) iframeContainer.style.display = 'none';
         }
         
-        // 2. Aplica a Grade EXATAMENTE no bloco das 25 dezenas
         const gridMarker = window.parent.document.getElementById('marker-volante');
         if(gridMarker){
             const markerContainer = gridMarker.closest('.element-container');
             if(markerContainer) {
                 markerContainer.style.display = 'none';
-                const verticalBlock = markerContainer.parentNode; // Trava a fuga do CSS!
+                const verticalBlock = markerContainer.parentNode; 
                 if(verticalBlock) verticalBlock.classList.add('volante-grid-perfect');
             }
         }
         
-        // 3. Pinta o Container do Simulador sem vazar pro Login
         const cardMarker = window.parent.document.getElementById('marker-sim-card');
         if(cardMarker) {
             const cardMarkerContainer = cardMarker.closest('.element-container');
