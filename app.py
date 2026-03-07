@@ -4,10 +4,11 @@ import pandas as pd
 from collections import Counter
 import itertools
 import os
+import random
 from datetime import datetime
 
 # ==========================================
-# 1. TRATAMENTO DO BOTÃO SAIR (Fixo na Barra)
+# 1. TRATAMENTO DO BOTÃO SAIR
 # ==========================================
 try:
     params = st.query_params
@@ -43,10 +44,8 @@ st.markdown("""
             max-width: 95% !important; padding-left: 1rem; padding-right: 1rem;
         }
 
-        /* --- REMOVE AS BORDAS PADRÕES DO FORMULÁRIO DO STREAMLIT --- */
         [data-testid="stForm"] { border: none !important; padding: 0 !important; }
 
-        /* --- BARRA FIORI COM BOTÃO SAIR --- */
         .fiori-header-bar {
             background-color: #354A5F; color: white; padding: 10px 20px;
             display: flex; justify-content: space-between; align-items: center;
@@ -70,7 +69,6 @@ st.markdown("""
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
 
-        /* --- INTEGRAÇÃO DO HEADER ROXO DO SIMULADOR --- */
         .simulador-header {
             background-color: #5C2D91; color: white; padding: 12px;
             font-weight: bold; text-align: center; font-size: 14px;
@@ -82,29 +80,18 @@ st.markdown("""
             padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
         }
 
-        /* --- A MÁGICA DA GRADE (JS HACK) SÓ PARA AS BOLINHAS --- */
         .volante-grid-perfect {
-            display: grid !important;
-            grid-template-columns: repeat(5, 1fr) !important;
-            gap: 12px !important;
-            justify-content: center !important;
-            justify-items: center !important;
-            max-width: 320px !important;
-            margin: 0 auto !important; 
-            padding: 10px 0 !important;
+            display: grid !important; grid-template-columns: repeat(5, 1fr) !important;
+            gap: 12px !important; justify-content: center !important; justify-items: center !important;
+            max-width: 320px !important; margin: 0 auto !important; padding: 10px 0 !important;
         }
-        
-        /* O visual perfeito das bolinhas */
         .volante-grid-perfect .element-container button {
-            border-radius: 50% !important;
-            height: 44px !important; width: 44px !important;
+            border-radius: 50% !important; height: 44px !important; width: 44px !important;
             padding: 0 !important; font-size: 15px !important; font-weight: bold !important;
             display: flex !important; justify-content: center !important; align-items: center !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s !important;
-            margin: 0 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s !important; margin: 0 !important;
         }
         
-        /* Cores das bolinhas do simulador */
         .volante-grid-perfect .element-container button[kind="secondary"] {
             background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
         }
@@ -112,12 +99,10 @@ st.markdown("""
             background-color: #5C2D91 !important; color: white !important; border: none !important;
         }
 
-        /* --- BOTÕES DOS QUADROS DE AÇÃO --- */
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
         
-        /* --- CARDS DE RESULTADOS --- */
         .faixa-resultados { background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333; margin-top: 30px; margin-bottom: 15px; border-radius: 4px; }
         .card-resultado { background-color: white; border: 1px solid #E0E0E0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%; }
         .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; text-transform: uppercase; }
@@ -130,7 +115,7 @@ ARQUIVO_BASE = "banco_dados.csv"
 ARQUIVO_PERFORMANCE = "performance_motores.csv"
 
 # ==========================================
-# 4. CONTROLE DE SESSÃO E VARIÁVEIS
+# 4. CONTROLE DE SESSÃO
 # ==========================================
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
@@ -191,7 +176,7 @@ if not st.session_state["logged_in"]:
     st.stop() 
 
 # ==========================================
-# 6. O APLICATIVO (Layout e Laboratório Matemático)
+# 6. O APLICATIVO E MOTORES MATEMÁTICOS
 # ==========================================
 
 st.markdown("""
@@ -215,11 +200,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
-# OS MOTORES MATEMÁTICOS (ROTEAMENTO)
+# MOTOR 1: FREQUÊNCIA CLÁSSICA
 # ------------------------------------------
 @st.cache_data(show_spinner=False)
 def motor_frequencia_classica(df_dados, n_dezenas):
-    """ MOTOR 1: A Lógica Clássica de Frequência, Primos e Fibonacci """
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
     if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
     
@@ -251,9 +235,10 @@ def motor_frequencia_classica(df_dados, n_dezenas):
         soma_total = sum(f_comb)
         repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
 
-        if (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1]) and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1]):
-            lista_diamante.append((freq_soma, sorted(list(f_comb))))
+        eh_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1]) and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1])
 
+        if eh_basico: lista_diamante.append((freq_soma, sorted(list(f_comb))))
+        
         score_frias = (50000 - freq_soma) / 100.0
         if impares in imp_d: score_frias += 50
         if qtd_primos in pri_d: score_frias += 30
@@ -261,8 +246,6 @@ def motor_frequencia_classica(df_dados, n_dezenas):
 
         score_geral = freq_soma / 100.0
         if impares in imp_d: score_geral += 50
-        else: score_geral -= 30
-        if qtd_primos in pri_d: score_geral += 30
         else: score_geral -= 30
         lista_geral.append((score_geral, sorted(list(f_comb))))
 
@@ -280,16 +263,102 @@ def motor_frequencia_classica(df_dados, n_dezenas):
 
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
+
+# ------------------------------------------
+# MOTOR 2: TEORIA DOS GRAFOS (CONEXÕES)
+# ------------------------------------------
+@st.cache_data(show_spinner=False)
+def motor_teoria_dos_grafos(df_dados, n_dezenas):
+    dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
+    if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
+    
+    past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
+    ultimo_sorteio = past_draws[-1]
+    
+    # Passo 1: Construir a Matriz de Adjacência (Força de Amizade entre Dezenas)
+    matriz_afinidade = [[0] * 26 for _ in range(26)]
+    for draw in past_draws:
+        lst = list(draw)
+        for i in range(len(lst)):
+            for j in range(i+1, len(lst)):
+                matriz_afinidade[lst[i]][lst[j]] += 1
+                matriz_afinidade[lst[j]][lst[i]] += 1
+                
+    if n_dezenas == 15:
+        imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
+    elif n_dezenas == 16:
+        imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
+    else:
+        imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
+
+    primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+    moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
+    fibonacci = {1, 2, 3, 5, 8, 13, 21}
+
+    lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
+    
+    # Passo 2: O Filtro de Monte Carlo Rápido
+    for comb in itertools.combinations(range(1, 26), n_dezenas):
+        f_comb = frozenset(comb)
+        
+        # Fast-Fail: Abandona logo se não tiver a proporção certa de ímpares para economizar processamento
+        impares = sum(1 for d in f_comb if d % 2 != 0)
+        if impares not in imp_d:
+            if random.random() > 0.05: # Permite que apenas 5% dos "fora do padrão" passem para o ranking Geral
+                continue
+                
+        qtd_primos = sum(1 for d in f_comb if d in primos)
+        eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
+        
+        # Passo 3: O Coração do Grafo (Calcula a coesão da panelinha)
+        score_grafo = 0
+        for i in range(n_dezenas):
+            for j in range(i+1, n_dezenas):
+                score_grafo += matriz_afinidade[comb[i]][comb[j]]
+        
+        qtd_moldura = sum(1 for d in f_comb if d in moldura)
+        qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
+        soma_total = sum(f_comb)
+        repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
+
+        if eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1]):
+            lista_diamante.append((score_grafo, list(comb)))
+            
+        if eh_valido_basico:
+            lista_frias.append((score_grafo, list(comb)))
+
+        lista_geral.append((score_grafo, list(comb)))
+
+        alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
+        if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
+            lista_reversa.append((score_grafo, list(comb)))
+
+    # Passo 4: O Julgamento Final (Ordenação por Afinidade)
+    lista_diamante.sort(key=lambda x: x[0], reverse=True) # Maior Coesão (Panelinha Ouro)
+    lista_geral.sort(key=lambda x: x[0], reverse=True)    # Maior Coesão Geral
+    lista_reversa.sort(key=lambda x: x[0], reverse=True)  # Maior Coesão
+    lista_frias.sort(key=lambda x: x[0], reverse=False)   # Menor Coesão (Os ANTAGONISTAS)
+
+    def formatar(lista):
+        # A pontuação é dividida por 10 para criar um índice estético legal na tela
+        return [{"Sel": False, "Rank": r, "Pts": round(s / 10.0, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+
+    return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
+
+
+# ------------------------------------------
+# O ROTEADOR INTELIGENTE
+# ------------------------------------------
 def formatar_vazio(n_dezenas):
     cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, n_dezenas+1)]
     return pd.DataFrame(columns=cols_vazias)
 
 def roteador_matematico(df_dados, n_dezenas, motor_selecionado):
-    """ Roteia para o algoritmo escolhido pelo usuário """
     if "1." in motor_selecionado:
         return motor_frequencia_classica(df_dados, n_dezenas)
+    elif "2." in motor_selecionado:
+        return motor_teoria_dos_grafos(df_dados, n_dezenas)
     else:
-        # Retorna dataframes vazios se o motor ainda não foi programado
         vazio = formatar_vazio(n_dezenas)
         return vazio, vazio, vazio, vazio
 
@@ -316,13 +385,12 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
 st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
 # ==========================================
-# DIVISÃO DA TELA E O SIMULADOR
+# DIVISÃO DA TELA E O SIMULADOR BLINDADO
 # ==========================================
 if df is not None:
     col_esq, col_dir = st.columns([1.2, 1], gap="large")
 
     with col_esq:
-        # --- O NOVO SELETOR DE MOTORES MATEMÁTICOS ---
         c_radio, c_motor, c_btn = st.columns([1.5, 2.5, 1.5])
         with c_radio:
             N_DEZENAS = st.radio("Dezenas:", [15, 16, 17], horizontal=True)
@@ -342,7 +410,7 @@ if df is not None:
                     dia, fri, ger, rev = roteador_matematico(df, N_DEZENAS, MOTOR_ESCOLHIDO)
                     
                     if dia.empty:
-                        st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento. Volte para a opção 1 por enquanto.")
+                        st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento. Volte para a opção 1 ou 2 por enquanto.")
                     
                     st.session_state["df_diamante"] = dia.head(100).sample(min(10, len(dia))).sort_values("Rank") if not dia.empty else dia
                     st.session_state["df_reversa"] = rev.head(100).sample(min(10, len(rev))).sort_values("Rank") if not rev.empty else rev
@@ -350,7 +418,7 @@ if df is not None:
                     st.session_state["df_geral"] = ger.head(2000).sample(min(100, len(ger))).sort_values("Rank") if not ger.empty else ger
                     st.session_state["N_GERADO"] = N_DEZENAS
                     st.session_state["gerado"] = True
-                    st.session_state["MOTOR_GERADO"] = MOTOR_ESCOLHIDO # Salva qual motor gerou a lista atual
+                    st.session_state["MOTOR_GERADO"] = MOTOR_ESCOLHIDO
 
         cfg_col = {"Sel": st.column_config.CheckboxColumn("Sel", default=False)}
         a1, a2, a3, a4 = st.tabs(["💎 Ranking Diamante", "❄️ Ranking Elite", "🔥 Ranking Geral", "🔄 Ranking Reversa"])
