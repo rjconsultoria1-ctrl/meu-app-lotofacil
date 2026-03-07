@@ -11,7 +11,7 @@ from datetime import datetime
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 2. INJEÇÃO DE CSS (ESTILIZAÇÃO TOTAL)
+# 2. INJEÇÃO DE CSS (ESTILIZAÇÃO TOTAL E RESPONSIVA)
 # ==========================================
 st.markdown("""
     <style>
@@ -29,21 +29,28 @@ st.markdown("""
             padding-right: 1rem;
         }
 
+        /* --- BARRA FIORI E BOTÃO SAIR --- */
         .fiori-header-bar {
-            background-color: #354A5F;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            margin-bottom: 5px;
-            position: fixed;
-            top: 0; left: 0; width: 100vw;
-            z-index: 999;
+            background-color: #354A5F; color: white; padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: Arial, sans-serif; position: fixed;
+            top: 0; left: 0; width: 100vw; z-index: 998;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
         .header-spacer { margin-top: 50px; }
+        
+        /* Container flutuante para o botão Sair real */
+        .btn-sair-container {
+            position: fixed; top: 4px; right: 20px; z-index: 1000;
+        }
+        .btn-sair-container .stButton > button {
+            background-color: transparent !important; border: none !important;
+            color: white !important; font-size: 14px; padding: 5px 10px !important;
+            height: auto !important;
+        }
+        .btn-sair-container .stButton > button:hover {
+            color: #6CB2EB !important; text-decoration: underline; background-color: transparent !important;
+        }
 
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
@@ -53,20 +60,38 @@ st.markdown("""
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
 
-        /* O VOLANTE ROXO */
-        div[data-testid="column"] div[data-testid="column"] div[data-testid="column"] .stButton > button { 
+        /* --- O VOLANTE ROXO E RESPONSIVIDADE MOBILE --- */
+        /* Formata os botões do simulador (Grid 5x5) */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] .stButton > button { 
             border-radius: 50% !important; 
             height: 42px !important; width: 42px !important;
             padding: 0 !important; font-size: 15px !important;
             margin: auto; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
         }
-        div[data-testid="column"] div[data-testid="column"] div[data-testid="column"] .stButton > button[kind="secondary"] {
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] .stButton > button[kind="secondary"] {
             background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
         }
-        div[data-testid="column"] div[data-testid="column"] div[data-testid="column"] .stButton > button[kind="primary"] {
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] .stButton > button[kind="primary"] {
             background-color: #5C2D91 !important; color: white !important; border: 2px solid #5C2D91 !important;
         }
+
+        /* Mágica Responsiva: Trava as 5 colunas do volante para NÃO empilharem no celular */
+        @media (max-width: 640px) {
+            /* Identifica colunas agrupadas de 5 (nosso volante) e força exibição em linha */
+            div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) {
+                flex-wrap: nowrap !important;
+                gap: 5px !important;
+                justify-content: center;
+            }
+            div[data-testid="stHorizontalBlock"]:has(> div:nth-child(5)) > div[data-testid="column"] {
+                width: 20% !important;
+                flex: 1 1 20% !important;
+                min-width: 0 !important;
+            }
+        }
         
+        /* --- CARDS DE RESULTADOS --- */
         .faixa-resultados {
             background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333;
             margin-top: 30px; margin-bottom: 15px; border-radius: 4px;
@@ -156,13 +181,20 @@ if not st.session_state["logged_in"]:
 # 4. O APLICATIVO (Layout Analítico)
 # ==========================================
 
+# --- BARRA FIORI E BOTÃO SAIR (FUNCIONAL) ---
 st.markdown("""
     <div class="fiori-header-bar">
         <div><span style="color:#6CB2EB;">💎 Gerador VIP</span> | Painel Simulador Lotofácil</div>
-        <div>🔍 🔔 ⚙️ | Sair</div>
-    </div>
+        <div>🔍 🔔 ⚙️ | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div> </div>
     <div class="header-spacer"></div>
 """, unsafe_allow_html=True)
+
+# Botão Sair Real flutuando no topo direito
+st.markdown('<div class="btn-sair-container">', unsafe_allow_html=True)
+if st.button("Sair", key="btn_sair_topo"):
+    st.session_state["logged_in"] = False
+    st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("""
     <div class="page-title-section">
@@ -228,7 +260,6 @@ def processar_motor_matematico(df_dados, n_dezenas):
     lista_geral.sort(key=lambda x: x[0], reverse=True)
     lista_reversa.sort(key=lambda x: x[0], reverse=True)
 
-    # AQUI ESTÁ A MÁGICA DOS 2 DÍGITOS: f"{d:02d}"
     def formatar(lista):
         return [{"Sel": False, "Rank": r, "Pts": round(s, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
 
@@ -292,7 +323,7 @@ if df is not None:
             c_volante, c_resumo = st.columns([1, 1.2])
             
             with c_volante:
-                # Volante
+                # Volante com CSS injetado para travar no mobile
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
@@ -303,7 +334,7 @@ if df is not None:
                             st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
                 
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
-                st.markdown(f"<p style='font-size:12px; color:#6A6D70; margin-top:10px;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; font-size:12px; color:#6A6D70; margin-top:10px;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
                 # BOTOES DE AÇÃO
                 c_btn1, c_btn2 = st.columns(2)
@@ -363,7 +394,6 @@ if df is not None:
                         for nome_lista, df_lista in listas_para_conferir:
                             if not df_lista.empty:
                                 for index, row in df_lista.iterrows():
-                                    # Convertendo os valores formatados (strings) de volta para int para comparar
                                     jogo = set([int(row[col]) for col in colunas_b])
                                     acertos = len(set_sorteadas.intersection(jogo))
                                     if acertos > melhor_acerto:
@@ -374,7 +404,7 @@ if df is not None:
                         elif melhor_acerto >= 11: st.info(f"👍 **CRUZAMENTO POSITIVO:** {mensagem}")
                         else: st.error(f"📉 **FALHA:** Maior acerto nas listas geradas: {melhor_acerto}.")
 
-                # AÇÃO 3: GRAVAR NO BANCO
+                # AÇÃO 3: GRAVAR NO BANCO (COM ATUALIZAÇÃO EM TEMPO REAL)
                 elif salvar_db and len(selecionadas) == 15:
                     dezenas_cols = [c for c in df.columns if "Dezena" in c]
                     if not dezenas_cols: dezenas_cols = df.columns[-15:]
@@ -405,13 +435,15 @@ if df is not None:
                         
                         df_novo = pd.concat([df, pd.DataFrame([novo_registro])], ignore_index=True)
                         df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
-                        st.cache_data.clear() # Limpa o cache para reler o CSV
-                        st.success("✅ **Jogo Gravado com Sucesso no Master Data!**")
+                        st.cache_data.clear()
+                        st.success("✅ **Jogo Gravado com Sucesso! Atualizando painel...**")
+                        # O GATILHO MÁGICO PARA ATUALIZAR OS CARDS NA HORA
+                        st.rerun() 
 
                 elif (verificar or validar_listas or salvar_db):
                     st.error("Selecione exatamente 15 dezenas no volante ao lado!")
                 elif len(selecionadas) > 0:
-                     st.markdown(f"<div style='border: 1px dashed #D9D9D9; border-radius:4px; padding:10px; font-size:12px; color:#6A6D70;'>Suas dezenas: {', '.join([f'{d:02d}' for d in selecionadas])}</div>", unsafe_allow_html=True)
+                     st.markdown(f"<div style='border: 1px dashed #D9D9D9; border-radius:4px; padding:10px; font-size:12px; color:#6A6D70; text-align:center;'>Suas dezenas: {', '.join([f'{d:02d}' for d in selecionadas])}</div>", unsafe_allow_html=True)
                 else:
                     st.caption("Complete 15 dezenas para habilitar as ações.")
 
