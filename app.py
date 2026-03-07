@@ -43,26 +43,26 @@ st.markdown("""
             max-width: 95% !important; padding-left: 1rem; padding-right: 1rem;
         }
 
-        /* --- REMOVE AS BORDAS PADRÕES DO FORMULÁRIO DO STREAMLIT --- */
-        [data-testid="stForm"] { border: none !important; padding: 0 !important; }
-
-        /* --- BARRA FIORI COM BOTÃO SAIR --- */
+        /* --- BARRA FIORI COM BOTÃO SAIR ALINHADO --- */
         .fiori-header-bar {
-            background-color: #354A5F; color: white; padding: 12px 20px;
+            background-color: #354A5F; color: white; padding: 10px 20px;
             display: flex; justify-content: space-between; align-items: center;
             font-family: Arial, sans-serif; position: fixed;
             top: 0; left: 0; width: 100vw; z-index: 9999;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
-        .header-spacer { margin-top: 50px; }
+        .header-left { display: flex; align-items: center; font-size: 15px; }
+        .header-right { display: flex; align-items: center; gap: 20px; font-size: 15px; }
         
         .btn-sair-link {
             color: white !important; text-decoration: none !important; font-weight: bold;
-            border: 1px solid rgba(255,255,255,0.5); padding: 4px 15px; border-radius: 4px;
-            margin-left: 15px; font-size: 14px; cursor: pointer; transition: 0.2s;
+            border: 1px solid rgba(255,255,255,0.5); padding: 5px 16px; border-radius: 4px;
+            font-size: 13px; cursor: pointer; transition: 0.2s;
         }
         .btn-sair-link:hover { background-color: rgba(255,255,255,0.2); border-color: white; }
 
+        .header-spacer { margin-top: 55px; }
+        
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
@@ -109,7 +109,7 @@ st.markdown("""
             background-color: #5C2D91 !important; color: white !important; border: none !important;
         }
 
-        /* --- BOTÕES DOS QUADROS DE AÇÃO (Não são afetados pelo grid) --- */
+        /* --- BOTÕES DOS QUADROS DE AÇÃO --- */
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
@@ -150,16 +150,16 @@ def limpar_volante():
     st.session_state["palpite_manual"] = set()
 
 # ==========================================
-# 5. TELA DE LOGIN (COM ENTER ATIVO E NOVO DEGRADÊ)
+# 5. TELA DE LOGIN (COM ENTER ATIVO E DEGRADÊ)
 # ==========================================
 if not st.session_state["logged_in"]:
-    # O CSS específico da tela de login garante a centralização e o degradê acentuado
+    # Estilização exclusiva que só existe na tela de Logon
     st.markdown("""
         <style>
             .stApp { 
                 background: radial-gradient(circle at 50% 40%, #E2EDF8 0%, #9CBBE0 100%); 
             }
-            /* Flexbox para centralizar vertical e horizontalmente sem barras brancas */
+            /* Centraliza absolutamente tudo na tela */
             .main .block-container {
                 display: flex;
                 flex-direction: column;
@@ -168,26 +168,35 @@ if not st.session_state["logged_in"]:
                 height: 100vh;
                 padding: 0 !important;
             }
-            .login-box { 
-                background-color: white; padding: 3rem; border-radius: 12px; 
-                box-shadow: 0 10px 30px rgba(0,20,50,0.15); width: 100%; max-width: 400px;
+            /* Transforma o Form Nativo na nossa "Caixa Branca" travando a largura */
+            [data-testid="stForm"] {
+                background-color: white !important;
+                padding: 45px 35px !important;
+                border-radius: 12px !important;
+                box-shadow: 0 10px 30px rgba(0,20,50,0.15) !important;
+                border: none !important;
+                width: 100% !important;
+                max-width: 420px !important; /* Impede os campos gigantes */
+                margin: 0 auto !important;
             }
             .stSelectbox>div { background-color: white !important; }
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align:center; color:#0070F2; margin-top:0;'>💎 Logon</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#556B82; font-size: 14px; margin-bottom: 25px;'>Gerador VIP Lotofácil</p>", unsafe_allow_html=True)
-    
-    # st.form habilita o botão "Enter" do teclado nativamente
+    # O Form engole tudo, inclusive os títulos, para a caixa ficar perfeita.
     with st.form("login_form"):
+        st.markdown("<h2 style='text-align:center; color:#0070F2; margin-top:0;'>💎 Logon</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:#556B82; font-size: 14px; margin-bottom: 25px;'>Gerador VIP Lotofácil</p>", unsafe_allow_html=True)
+        
         usuario = st.text_input("Usuário", value="consultor.sd", placeholder="Digite seu usuário")
         senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+        
         st.caption("Idioma")
         st.selectbox("", ["PT - Português", "EN - English", "ES - Español"], label_visibility="collapsed")
         
         st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Como está em um st.form, apertar "Enter" vai acionar esse botão automaticamente
         submitted = st.form_submit_button("Logon", use_container_width=True, type="secondary")
         
         if submitted:
@@ -198,8 +207,7 @@ if not st.session_state["logged_in"]:
                 st.error("Falha na autenticação.")
                 
     st.markdown("<p style='text-align:center; font-size:12px; color:#0070F2; margin-top:15px; cursor:pointer;'>Modificar senha / Ajuda</p>", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()
+    st.stop() # Bloqueia o carregamento do resto do sistema se não logou
 
 # ==========================================
 # 6. O APLICATIVO (Layout Analítico Estruturado)
@@ -207,16 +215,21 @@ if not st.session_state["logged_in"]:
 
 st.markdown("""
     <div class="fiori-header-bar">
-        <div><span style="color:#6CB2EB;">💎 Gerador VIP</span> | Painel Simulador Lotofácil</div>
-        <div>🔍 🔔 ⚙️ <a href="/?logout=true" target="_self" class="btn-sair-link">Sair 🚪</a></div>
+        <div class="header-left">
+            <span style="color:#6CB2EB; font-weight:bold;">💎 Gerador VIP</span> &nbsp;|&nbsp; Simulador Lotofácil
+        </div>
+        <div class="header-right">
+            <span>🔍 🔔 ⚙️</span>
+            <a href="/?logout=true" target="_self" class="btn-sair-link">Sair</a>
+        </div>
     </div>
     <div class="header-spacer"></div>
 """, unsafe_allow_html=True)
 
 st.markdown("""
     <div class="page-title-section">
-        <span class="header-title">Cockpit de Otimização e Simulador VIP</span>
-        <span class="header-subtitle" style="margin-left: 15px;">Modelagem combinatória baseada em histórico de sorteios.</span>
+        <span class="header-title">Cockpit Simulador VIP LotoFácil</span>
+        <span class="header-subtitle" style="margin-left: 15px;">Otmização combinatória baseada em histórico e regras matemáticas.</span>
     </div>
 """, unsafe_allow_html=True)
 
