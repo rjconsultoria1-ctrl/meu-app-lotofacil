@@ -43,7 +43,10 @@ st.markdown("""
             max-width: 95% !important; padding-left: 1rem; padding-right: 1rem;
         }
 
-        /* --- BARRA FIORI COM BOTÃO SAIR ALINHADO --- */
+        /* --- REMOVE AS BORDAS PADRÕES DO FORMULÁRIO DO STREAMLIT --- */
+        [data-testid="stForm"] { border: none !important; padding: 0 !important; }
+
+        /* --- BARRA FIORI COM BOTÃO SAIR --- */
         .fiori-header-bar {
             background-color: #354A5F; color: white; padding: 10px 20px;
             display: flex; justify-content: space-between; align-items: center;
@@ -124,6 +127,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 ARQUIVO_BASE = "banco_dados.csv"
+ARQUIVO_PERFORMANCE = "performance_motores.csv"
 
 # ==========================================
 # 4. CONTROLE DE SESSÃO E VARIÁVEIS
@@ -139,6 +143,7 @@ if "df_diamante" not in st.session_state:
     st.session_state["df_geral"] = df_vazio
     st.session_state["df_reversa"] = df_vazio
     st.session_state["gerado"] = False
+    st.session_state["MOTOR_GERADO"] = "N/A"
 
 def toggle_dezena(dezena):
     palpite = st.session_state["palpite_manual"]
@@ -150,40 +155,18 @@ def limpar_volante():
     st.session_state["palpite_manual"] = set()
 
 # ==========================================
-# 5. TELA DE LOGIN (COM ENTER ATIVO E DEGRADÊ)
+# 5. TELA DE LOGIN 
 # ==========================================
 if not st.session_state["logged_in"]:
-    # Estilização exclusiva que só existe na tela de Logon
     st.markdown("""
         <style>
-            .stApp { 
-                background: radial-gradient(circle at 50% 40%, #E2EDF8 0%, #9CBBE0 100%); 
-            }
-            /* Centraliza absolutamente tudo na tela */
-            .main .block-container {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                padding: 0 !important;
-            }
-            /* Transforma o Form Nativo na nossa "Caixa Branca" travando a largura */
-            [data-testid="stForm"] {
-                background-color: white !important;
-                padding: 45px 35px !important;
-                border-radius: 12px !important;
-                box-shadow: 0 10px 30px rgba(0,20,50,0.15) !important;
-                border: none !important;
-                width: 100% !important;
-                max-width: 420px !important; /* Impede os campos gigantes */
-                margin: 0 auto !important;
-            }
+            .stApp { background: radial-gradient(circle at 50% 40%, #E2EDF8 0%, #9CBBE0 100%); }
+            .main .block-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; padding: 0 !important; }
+            [data-testid="stForm"] { background-color: white !important; padding: 45px 35px !important; border-radius: 12px !important; box-shadow: 0 10px 30px rgba(0,20,50,0.15) !important; border: none !important; width: 100% !important; max-width: 420px !important; margin: 0 auto !important; }
             .stSelectbox>div { background-color: white !important; }
         </style>
     """, unsafe_allow_html=True)
     
-    # O Form engole tudo, inclusive os títulos, para a caixa ficar perfeita.
     with st.form("login_form"):
         st.markdown("<h2 style='text-align:center; color:#0070F2; margin-top:0;'>💎 Logon</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align:center; color:#556B82; font-size: 14px; margin-bottom: 25px;'>Gerador VIP Lotofácil</p>", unsafe_allow_html=True)
@@ -195,8 +178,6 @@ if not st.session_state["logged_in"]:
         st.selectbox("", ["PT - Português", "EN - English", "ES - Español"], label_visibility="collapsed")
         
         st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Como está em um st.form, apertar "Enter" vai acionar esse botão automaticamente
         submitted = st.form_submit_button("Logon", use_container_width=True, type="secondary")
         
         if submitted:
@@ -207,10 +188,10 @@ if not st.session_state["logged_in"]:
                 st.error("Falha na autenticação.")
                 
     st.markdown("<p style='text-align:center; font-size:12px; color:#0070F2; margin-top:15px; cursor:pointer;'>Modificar senha / Ajuda</p>", unsafe_allow_html=True)
-    st.stop() # Bloqueia o carregamento do resto do sistema se não logou
+    st.stop() 
 
 # ==========================================
-# 6. O APLICATIVO (Layout Analítico Estruturado)
+# 6. O APLICATIVO (Layout e Laboratório Matemático)
 # ==========================================
 
 st.markdown("""
@@ -229,12 +210,16 @@ st.markdown("""
 st.markdown("""
     <div class="page-title-section">
         <span class="header-title">Cockpit Simulador VIP LotoFácil</span>
-        <span class="header-subtitle" style="margin-left: 15px;">Otmização combinatória baseada em histórico e regras matemáticas.</span>
+        <span class="header-subtitle" style="margin-left: 15px;">Otimização combinatória baseada em histórico e regras matemáticas.</span>
     </div>
 """, unsafe_allow_html=True)
 
+# ------------------------------------------
+# OS MOTORES MATEMÁTICOS (ROTEAMENTO)
+# ------------------------------------------
 @st.cache_data(show_spinner=False)
-def processar_motor_matematico(df_dados, n_dezenas):
+def motor_frequencia_classica(df_dados, n_dezenas):
+    """ MOTOR 1: A Lógica Clássica de Frequência, Primos e Fibonacci """
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
     if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
     
@@ -295,6 +280,21 @@ def processar_motor_matematico(df_dados, n_dezenas):
 
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
+def formatar_vazio(n_dezenas):
+    cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, n_dezenas+1)]
+    return pd.DataFrame(columns=cols_vazias)
+
+def roteador_matematico(df_dados, n_dezenas, motor_selecionado):
+    """ Roteia para o algoritmo escolhido pelo usuário """
+    if "1." in motor_selecionado:
+        return motor_frequencia_classica(df_dados, n_dezenas)
+    else:
+        # Retorna dataframes vazios se o motor ainda não foi programado
+        vazio = formatar_vazio(n_dezenas)
+        return vazio, vazio, vazio, vazio
+
+# ------------------------------------------
+
 df = None
 if os.path.exists(ARQUIVO_BASE):
     try: df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='utf-8')
@@ -316,25 +316,41 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
 st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
 # ==========================================
-# DIVISÃO DA TELA E O SIMULADOR BLINDADO
+# DIVISÃO DA TELA E O SIMULADOR
 # ==========================================
 if df is not None:
     col_esq, col_dir = st.columns([1.2, 1], gap="large")
 
     with col_esq:
-        c_radio, c_btn = st.columns([2, 1])
+        # --- O NOVO SELETOR DE MOTORES MATEMÁTICOS ---
+        c_radio, c_motor, c_btn = st.columns([1.5, 2.5, 1.5])
         with c_radio:
-            N_DEZENAS = st.radio("Selecione a quantidade de Dezenas", [15, 16, 17], horizontal=True, label_visibility="collapsed")
+            N_DEZENAS = st.radio("Dezenas:", [15, 16, 17], horizontal=True)
+        with c_motor:
+            lista_motores = [
+                "1. Frequência Clássica (Atual)",
+                "2. Teoria dos Grafos (Conexões)",
+                "3. Cadeias de Markov (Inércia)",
+                "4. Entropia de Shannon (Caos)",
+                "5. Algoritmo Genético (Mutação)"
+            ]
+            MOTOR_ESCOLHIDO = st.selectbox("Estratégia de Cálculo:", lista_motores, label_visibility="collapsed")
+        
         with c_btn:
-            if st.button("▶ Gerar Combinações", use_container_width=True, type="secondary"):
-                with st.spinner("Processando combinações em background..."):
-                    dia, fri, ger, rev = processar_motor_matematico(df, N_DEZENAS)
-                    st.session_state["df_diamante"] = dia.head(100).sample(min(10, len(dia))).sort_values("Rank")
-                    st.session_state["df_reversa"] = rev.head(100).sample(min(10, len(rev))).sort_values("Rank")
-                    st.session_state["df_frias"] = fri.head(1000).sample(min(50, len(fri))).sort_values("Rank")
-                    st.session_state["df_geral"] = ger.head(2000).sample(min(100, len(ger))).sort_values("Rank")
+            if st.button("▶ Gerar", use_container_width=True, type="secondary"):
+                with st.spinner(f"Processando {MOTOR_ESCOLHIDO}..."):
+                    dia, fri, ger, rev = roteador_matematico(df, N_DEZENAS, MOTOR_ESCOLHIDO)
+                    
+                    if dia.empty:
+                        st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento. Volte para a opção 1 por enquanto.")
+                    
+                    st.session_state["df_diamante"] = dia.head(100).sample(min(10, len(dia))).sort_values("Rank") if not dia.empty else dia
+                    st.session_state["df_reversa"] = rev.head(100).sample(min(10, len(rev))).sort_values("Rank") if not rev.empty else rev
+                    st.session_state["df_frias"] = fri.head(1000).sample(min(50, len(fri))).sort_values("Rank") if not fri.empty else fri
+                    st.session_state["df_geral"] = ger.head(2000).sample(min(100, len(ger))).sort_values("Rank") if not ger.empty else ger
                     st.session_state["N_GERADO"] = N_DEZENAS
                     st.session_state["gerado"] = True
+                    st.session_state["MOTOR_GERADO"] = MOTOR_ESCOLHIDO # Salva qual motor gerou a lista atual
 
         cfg_col = {"Sel": st.column_config.CheckboxColumn("Sel", default=False)}
         a1, a2, a3, a4 = st.tabs(["💎 Ranking Diamante", "❄️ Ranking Elite", "🔥 Ranking Geral", "🔄 Ranking Reversa"])
@@ -349,11 +365,9 @@ if df is not None:
         c_volante, c_resumo = st.columns([1, 1], gap="medium")
         
         with c_volante:
-            # === CABEÇALHO ROXO DO CARD ===
             st.markdown('<div class="simulador-header">EU TERIA GANHO ALGUM PRÊMIO?</div>', unsafe_allow_html=True)
             
             with st.container(border=True):
-                # --- A CAIXA-FORTE DAS BOLINHAS (O JS SÓ AGE AQUI) ---
                 with st.container():
                     st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
                     
@@ -362,7 +376,6 @@ if df is not None:
                         tipo_btn = "primary" if selecionada else "secondary"
                         st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
                     
-                    # O SCRIPT DE INJEÇÃO QUE OBRIGA AS BOLINHAS A VIRAREM GRID
                     components.html("""
                         <script>
                             const iframe = window.frameElement;
@@ -370,22 +383,16 @@ if df is not None:
                                 const iframeContainer = iframe.closest('.element-container');
                                 if(iframeContainer) iframeContainer.style.display = 'none';
                             }
-                            
-                            // Acha EXATAMENTE o container isolado das bolinhas e protege ele
                             const marker = window.parent.document.getElementById('marker-volante');
                             if(marker){
                                 const markerContainer = marker.closest('.element-container');
                                 if(markerContainer) markerContainer.style.display = 'none';
-                                
                                 const verticalBlock = marker.closest('div[data-testid="stVerticalBlock"]');
-                                if(verticalBlock) {
-                                    verticalBlock.classList.add('volante-grid-perfect');
-                                }
+                                if(verticalBlock) verticalBlock.classList.add('volante-grid-perfect');
                             }
                         </script>
                     """, height=0, width=0)
                 
-                # --- BOTÕES DE AÇÃO E TEXTO (BLINDADOS DO LADO DE FORA DA CAIXA-FORTE) ---
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
                 st.markdown(f"<p style='text-align:center; font-size:13px; color:#6A6D70; padding-top: 15px; border-top: 1px solid #E0E0E0;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
@@ -398,7 +405,6 @@ if df is not None:
                 with c_btn4: st.button("🗑️", on_click=limpar_volante, help="Limpar volante")
 
         with c_resumo:
-            # --- QUADRO 4 (RESUMO DOS PALPITES) ---
             st.markdown("<h5 style='text-align:center; color:#32363A; margin-top:0;'>Resumo do Palpite</h5>", unsafe_allow_html=True)
             
             if verificar and len(selecionadas) == 15:
@@ -442,6 +448,8 @@ if df is not None:
 
                     melhor_acerto = 0
                     mensagem = ""
+                    lista_vencedora = ""
+                    
                     for nome_lista, df_lista in listas_para_conferir:
                         if not df_lista.empty:
                             for index, row in df_lista.iterrows():
@@ -450,10 +458,28 @@ if df is not None:
                                 if acertos > melhor_acerto:
                                     melhor_acerto = acertos
                                     mensagem = f"{acertos} acertos na linha #{row['Rank']} da lista {nome_lista}."
+                                    lista_vencedora = nome_lista
 
                     if melhor_acerto >= 14: st.success(f"🎉 **CRUZAMENTO PERFEITO!** {mensagem}")
                     elif melhor_acerto >= 11: st.info(f"👍 **CRUZAMENTO POSITIVO:** {mensagem}")
                     else: st.error(f"📉 **FALHA:** Maior acerto nas listas geradas: {melhor_acerto}.")
+
+                    # --- GRAVADOR DE PERFORMANCE DE MOTORES ---
+                    if melhor_acerto >= 11:
+                        novo_registro_perf = pd.DataFrame([{
+                            "Data_Validacao": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                            "Motor_Utilizado": st.session_state["MOTOR_GERADO"],
+                            "Lista_Origem": lista_vencedora,
+                            "Acertos": melhor_acerto,
+                            "Dezenas": ", ".join([f"{d:02d}" for d in selecionadas])
+                        }])
+                        if os.path.exists(ARQUIVO_PERFORMANCE):
+                            df_perf = pd.read_csv(ARQUIVO_PERFORMANCE, sep=';', encoding='utf-8')
+                            df_perf = pd.concat([df_perf, novo_registro_perf], ignore_index=True)
+                        else:
+                            df_perf = novo_registro_perf
+                        df_perf.to_csv(ARQUIVO_PERFORMANCE, index=False, sep=';')
+                        st.caption(f"📊 *Score gravado na performance do motor: {st.session_state['MOTOR_GERADO']}*")
 
             elif salvar_db and len(selecionadas) == 15:
                 dezenas_cols = [c for c in df.columns if "Dezena" in c]
