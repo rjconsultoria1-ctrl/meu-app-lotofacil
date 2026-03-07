@@ -8,6 +8,7 @@ import random
 import threading
 import math
 import time
+import heapq
 from datetime import datetime
 
 # ==========================================
@@ -56,15 +57,9 @@ st.markdown("""
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
         
-        /* --- ESTILO ISOLADO DO CARD DO SIMULADOR --- */
         .simulador-header { background-color: #5C2D91; color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 14px; border-radius: 8px 8px 0 0; margin-bottom: -15px; position: relative; z-index: 10; }
-        .simulador-card-style {
-            border-radius: 0 0 8px 8px !important; border: 1px solid #E0E0E0 !important;
-            border-top: none !important; background-color: white !important;
-            padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
-        }
+        .simulador-card-style { border-radius: 0 0 8px 8px !important; border: 1px solid #E0E0E0 !important; border-top: none !important; background-color: white !important; padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important; }
 
-        /* --- A GRADE MÁGICA 5x5 --- */
         .volante-grid-perfect { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 12px !important; justify-content: center !important; justify-items: center !important; max-width: 320px !important; margin: 0 auto !important; padding: 10px 0 !important; }
         .volante-grid-perfect .element-container button { border-radius: 50% !important; height: 44px !important; width: 44px !important; padding: 0 !important; font-size: 15px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; align-items: center !important; box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s !important; margin: 0 !important; }
         .volante-grid-perfect .element-container button[kind="secondary"] { background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important; }
@@ -158,7 +153,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
-# LÓGICAS DOS MOTORES (1 a 4)
+# LÓGICAS DOS MOTORES (ANTI-CRASH COM HEAPQ)
 # ------------------------------------------
 def executar_logica_motora(df_dados, n_dezenas, motor_id):
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
@@ -170,12 +165,16 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     if n_dezenas == 15: imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
     elif n_dezenas == 16: imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
     else: imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
+    
     primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
     moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
     fibonacci = {1, 2, 3, 5, 8, 13, 21}
-    lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
+    
+    # As nossas Lixeiras Inteligentes (Poupam memória RAM)
+    LIMIT = 5000 
+    h_diamante, h_frias, h_geral, h_reversa = [], [], [], []
 
-    # Setup Motores Iniciais
+    # SETUP DOS MOTORES
     if motor_id == 1:
         all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
         counts = Counter(all_numbers)
@@ -198,9 +197,7 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
                 elif hist_num[i] == 0 and hist_num[i+1] == 1: t_0_1 += 1
                 elif hist_num[i] == 0 and hist_num[i+1] == 0: t_0_0 += 1
             total_1, total_0 = t_1_1 + t_1_0, t_0_1 + t_0_0
-            p_1_to_1 = (t_1_1 / total_1) if total_1 > 0 else 0
-            p_0_to_1 = (t_0_1 / total_0) if total_0 > 0 else 0
-            prob_markov[num] = (p_1_to_1 * 100) if num in ultimo_sorteio else (p_0_to_1 * 100)
+            prob_markov[num] = ((t_1_1 / total_1) * 100) if (num in ultimo_sorteio and total_1 > 0) else ((t_0_1 / total_0) * 100 if total_0 > 0 else 0)
     elif motor_id == 4:
         all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
         counts = Counter(all_numbers)
@@ -210,8 +207,12 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
         hist_entropias = [calc_entropia(draw) for draw in past_draws]
         entropia_ideal = sum(hist_entropias) / len(hist_entropias) if hist_entropias else 0
 
-    # Iteração Bruta
-    for comb in itertools.combinations(range(1, 26), n_dezenas):
+    # EXECUÇÃO DO MOTOR (Com alívio de CPU para não travar a tela)
+    for idx, comb in enumerate(itertools.combinations(range(1, 26), n_dezenas)):
+        # FREIO ABS: A cada 100.000 cálculos, respira por 1 milissegundo para o Streamlit aceitar cliques na tela!
+        if idx % 100000 == 0:
+            time.sleep(0.001) 
+
         f_comb = frozenset(comb)
         impares = sum(1 for d in f_comb if d % 2 != 0)
         
@@ -227,62 +228,80 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
         eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
         eh_ouro = eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1])
 
+        # Pontuações Padronizadas: Quanto MAIOR o score, MELHOR para a respectiva lista.
         if motor_id == 1:
             score = sum(counts[d] for d in f_comb)
-            score_frias_val = (50000 - score) / 100.0
             score_val = score / 100.0
+            score_frias_val = (50000 - score) / 100.0 # Frias clássica: alta pontuação para pouca frequência
             if impares in imp_d: score_frias_val += 50; score_val += 50
             if qtd_primos in pri_d: score_frias_val += 30; score_val += 30
         elif motor_id == 2:
             score_val = sum(matriz_afinidade[comb[i]][comb[j]] for i in range(n_dezenas) for j in range(i+1, n_dezenas))
-            score_frias_val = score_val
+            score_frias_val = -score_val # Oposto da afinidade
         elif motor_id == 3:
             score_val = sum(prob_markov[d] for d in f_comb)
-            score_frias_val = score_val
+            score_frias_val = -score_val # Oposto da inércia
         elif motor_id == 4:
             H_comb = calc_entropia(f_comb)
             distancia = abs(H_comb - entropia_ideal)
             score_val = max(0, 100.0 - (distancia * 50.0)) 
-            score_frias_val = score_val
+            score_frias_val = distancia * 50.0 # Frias: o mais caótico/distante possível
 
-        if eh_ouro: lista_diamante.append((score_val, list(comb)))
-        if eh_valido_basico: lista_frias.append((score_frias_val, list(comb)))
-        lista_geral.append((score_val, list(comb)))
+        # LIXEIRA INTELIGENTE: Pega apenas os 5000 Top Scores sem usar memória!
+        if eh_ouro:
+            if len(h_diamante) < LIMIT: heapq.heappush(h_diamante, (score_val, comb))
+            elif score_val > h_diamante[0][0]: heapq.heappushpop(h_diamante, (score_val, comb))
+            
+        if eh_valido_basico:
+            if len(h_frias) < LIMIT: heapq.heappush(h_frias, (score_frias_val, comb))
+            elif score_frias_val > h_frias[0][0]: heapq.heappushpop(h_frias, (score_frias_val, comb))
+            
+        if len(h_geral) < LIMIT: heapq.heappush(h_geral, (score_val, comb))
+        elif score_val > h_geral[0][0]: heapq.heappushpop(h_geral, (score_val, comb))
         
         alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
         if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
-            lista_reversa.append((score_val, list(comb)))
+            if len(h_reversa) < LIMIT: heapq.heappush(h_reversa, (score_val, comb))
+            elif score_val > h_reversa[0][0]: heapq.heappushpop(h_reversa, (score_val, comb))
 
-    lista_diamante.sort(key=lambda x: x[0], reverse=True)
-    lista_geral.sort(key=lambda x: x[0], reverse=True) 
-    lista_reversa.sort(key=lambda x: x[0], reverse=True)  
-    lista_frias.sort(key=lambda x: x[0], reverse=(motor_id in [1, 4])) 
+    # Extrai o pódio final
+    lista_diamante = sorted(h_diamante, key=lambda x: x[0], reverse=True)
+    lista_frias = sorted(h_frias, key=lambda x: x[0], reverse=True)
+    lista_geral = sorted(h_geral, key=lambda x: x[0], reverse=True)
+    lista_reversa = sorted(h_reversa, key=lambda x: x[0], reverse=True)
 
-    def formatar(lista): 
-        fator = 10.0 if motor_id == 2 else 1.0
-        return [{"Sel": False, "Rank": r, "Pts": round(s/fator, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+    def formatar(lista, is_fria=False): 
+        res = []
+        for r, (s, c) in enumerate(lista, 1):
+            display_score = s
+            # Formatação estética para telas
+            if motor_id == 2:
+                if is_fria: display_score = -s
+                display_score = display_score / 10.0
+            elif motor_id == 3 and is_fria:
+                display_score = -s
+                
+            res.append({"Sel": False, "Rank": r, "Pts": round(display_score, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}})
+        return res
     
-    return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
+    return pd.DataFrame(formatar(lista_diamante)), pd.DataFrame(formatar(lista_frias, True)), pd.DataFrame(formatar(lista_geral)), pd.DataFrame(formatar(lista_reversa))
 
 # ------------------------------------------
-# TRABALHADOR FANTASMA COM FREIO (ARREFECIMENTO)
+# TRABALHADOR FANTASMA & MEMÓRIA
 # ------------------------------------------
 def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
     pasta_cache = "memoria_calculos"
     if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
-    
     for motor_id in [1, 2, 3, 4]:
         for n_dez in [15, 16, 17]:
             arq_meta = f"{pasta_cache}/M{motor_id}_{n_dez}_meta.txt"
             prefixo_csv = f"{pasta_cache}/M{motor_id}_{n_dez}"
             precisa_calcular = True
-            
             if os.path.exists(arq_meta):
                 with open(arq_meta, "r") as f:
                     try:
                         if int(f.read().strip()) == tamanho_banco_atual: precisa_calcular = False 
                     except: pass
-                    
             if precisa_calcular:
                 try:
                     dia, fri, ger, rev = executar_logica_motora(df_dados, n_dez, motor_id)
@@ -291,9 +310,7 @@ def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
                     ger.to_csv(f"{prefixo_csv}_ger.csv", sep=";", index=False)
                     rev.to_csv(f"{prefixo_csv}_rev.csv", sep=";", index=False)
                     with open(arq_meta, "w") as f: f.write(str(tamanho_banco_atual))
-                    
-                    # O SISTEMA DE ARREFECIMENTO: Pára por 4 segundos para o Streamlit não crashar!
-                    time.sleep(4)
+                    time.sleep(4) # Alívio extra pro Streamlit Cloud
                 except: pass
 
 def processar_com_memoria(df_dados, n_dezenas, motor_selecionado):
@@ -415,11 +432,9 @@ if df is not None:
         with c_volante:
             st.markdown('<div class="simulador-header">EU TERIA GANHO ALGUM PRÊMIO?</div>', unsafe_allow_html=True)
             
-            # --- CARD DO SIMULADOR SEGURO ---
             with st.container(border=True):
                 st.markdown('<div id="marker-sim-card"></div>', unsafe_allow_html=True)
                 
-                # --- CAIXA FORTE DO VOLANTE (SÓ BOLINHAS AQUI DENTRO) ---
                 with st.container():
                     st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
                     for num in range(1, 26):
@@ -427,7 +442,6 @@ if df is not None:
                         tipo_btn = "primary" if selecionada else "secondary"
                         st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
                 
-                # --- BOTÕES DE AÇÃO BLINDADOS FORA DA GRADE ---
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
                 st.markdown(f"<p style='text-align:center; font-size:13px; color:#6A6D70; padding-top: 15px; border-top: 1px solid #E0E0E0;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
