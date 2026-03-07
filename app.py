@@ -155,41 +155,28 @@ if not st.session_state["logged_in"]:
     with st.form("login_form"):
         st.markdown("<h2 style='text-align:center; color:#0070F2; margin-top:0;'>💎 Logon</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align:center; color:#556B82; font-size: 14px; margin-bottom: 25px;'>Gerador VIP Lotofácil</p>", unsafe_allow_html=True)
-        
         usuario = st.text_input("Usuário", value="consultor.sd", placeholder="Digite seu usuário")
         senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
-        
         st.caption("Idioma")
         st.selectbox("", ["PT - Português", "EN - English", "ES - Español"], label_visibility="collapsed")
-        
         st.markdown("<br>", unsafe_allow_html=True)
-        submitted = st.form_submit_button("Logon", use_container_width=True, type="secondary")
-        
-        if submitted:
+        if st.form_submit_button("Logon", use_container_width=True, type="secondary"):
             if senha == "abap123":
                 st.session_state["logged_in"] = True
                 st.rerun()
             else:
                 st.error("Falha na autenticação.")
-                
     st.markdown("<p style='text-align:center; font-size:12px; color:#0070F2; margin-top:15px; cursor:pointer;'>Modificar senha / Ajuda</p>", unsafe_allow_html=True)
     st.stop() 
 
 # ==========================================
 # 6. O APLICATIVO E MOTORES MATEMÁTICOS
 # ==========================================
-
 st.markdown("""
     <div class="fiori-header-bar">
-        <div class="header-left">
-            <span style="color:#6CB2EB; font-weight:bold;">💎 Gerador VIP</span> &nbsp;|&nbsp; Simulador Lotofácil
-        </div>
-        <div class="header-right">
-            <span>🔍 🔔 ⚙️</span>
-            <a href="/?logout=true" target="_self" class="btn-sair-link">Sair</a>
-        </div>
-    </div>
-    <div class="header-spacer"></div>
+        <div class="header-left"><span style="color:#6CB2EB; font-weight:bold;">💎 Gerador VIP</span> &nbsp;|&nbsp; Simulador Lotofácil</div>
+        <div class="header-right"><span>🔍 🔔 ⚙️</span><a href="/?logout=true" target="_self" class="btn-sair-link">Sair</a></div>
+    </div><div class="header-spacer"></div>
 """, unsafe_allow_html=True)
 
 st.markdown("""
@@ -200,242 +187,146 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
-# MOTOR 1: FREQUÊNCIA CLÁSSICA
+# LÓGICAS DOS MOTORES (M1, M2, M3)
 # ------------------------------------------
-@st.cache_data(show_spinner=False)
-def motor_frequencia_classica(df_dados, n_dezenas):
+def executar_logica_motora(df_dados, n_dezenas, motor_id):
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
     if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
-    
-    past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
-    all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
-    counts = Counter(all_numbers)
-    ultimo_sorteio = past_draws[-1]
-
-    if n_dezenas == 15:
-        imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
-    elif n_dezenas == 16:
-        imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
-    else:
-        imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
-
-    primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
-    moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
-    fibonacci = {1, 2, 3, 5, 8, 13, 21}
-
-    lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
-
-    for comb in itertools.combinations(range(1, 26), n_dezenas):
-        f_comb = frozenset(comb)
-        freq_soma = sum(counts[d] for d in f_comb)
-        impares = sum(1 for d in f_comb if d % 2 != 0)
-        qtd_primos = sum(1 for d in f_comb if d in primos)
-        qtd_moldura = sum(1 for d in f_comb if d in moldura)
-        qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
-        soma_total = sum(f_comb)
-        repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
-
-        eh_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1]) and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1])
-
-        if eh_basico: lista_diamante.append((freq_soma, sorted(list(f_comb))))
-        
-        score_frias = (50000 - freq_soma) / 100.0
-        if impares in imp_d: score_frias += 50
-        if qtd_primos in pri_d: score_frias += 30
-        lista_frias.append((score_frias, sorted(list(f_comb))))
-
-        score_geral = freq_soma / 100.0
-        if impares in imp_d: score_geral += 50
-        else: score_geral -= 30
-        lista_geral.append((score_geral, sorted(list(f_comb))))
-
-        alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
-        if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
-            lista_reversa.append((score_geral, sorted(list(f_comb))))
-
-    lista_diamante.sort(key=lambda x: x[0], reverse=True)
-    lista_frias.sort(key=lambda x: x[0], reverse=True)
-    lista_geral.sort(key=lambda x: x[0], reverse=True)
-    lista_reversa.sort(key=lambda x: x[0], reverse=True)
-
-    def formatar(lista):
-        return [{"Sel": False, "Rank": r, "Pts": round(s, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
-
-    return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
-
-
-# ------------------------------------------
-# MOTOR 2: TEORIA DOS GRAFOS (CONEXÕES)
-# ------------------------------------------
-@st.cache_data(show_spinner=False)
-def motor_teoria_dos_grafos(df_dados, n_dezenas):
-    dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
-    if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
-    
     past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
     ultimo_sorteio = past_draws[-1]
     
-    matriz_afinidade = [[0] * 26 for _ in range(26)]
-    for draw in past_draws:
-        lst = list(draw)
-        for i in range(len(lst)):
-            for j in range(i+1, len(lst)):
-                matriz_afinidade[lst[i]][lst[j]] += 1
-                matriz_afinidade[lst[j]][lst[i]] += 1
-                
     if n_dezenas == 15: imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
     elif n_dezenas == 16: imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
     else: imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
-
     primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
     moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
     fibonacci = {1, 2, 3, 5, 8, 13, 21}
-
     lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
-    
+
+    # Setup M1
+    if motor_id == 1:
+        all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
+        counts = Counter(all_numbers)
+    # Setup M2
+    elif motor_id == 2:
+        matriz_afinidade = [[0] * 26 for _ in range(26)]
+        for draw in past_draws:
+            lst = list(draw)
+            for i in range(len(lst)):
+                for j in range(i+1, len(lst)):
+                    matriz_afinidade[lst[i]][lst[j]] += 1
+                    matriz_afinidade[lst[j]][lst[i]] += 1
+    # Setup M3
+    elif motor_id == 3:
+        prob_markov = {}
+        for num in range(1, 26):
+            hist_num = [1 if num in draw else 0 for draw in past_draws]
+            t_1_1, t_1_0, t_0_1, t_0_0 = 0, 0, 0, 0
+            for i in range(len(hist_num) - 1):
+                if hist_num[i] == 1 and hist_num[i+1] == 1: t_1_1 += 1
+                elif hist_num[i] == 1 and hist_num[i+1] == 0: t_1_0 += 1
+                elif hist_num[i] == 0 and hist_num[i+1] == 1: t_0_1 += 1
+                elif hist_num[i] == 0 and hist_num[i+1] == 0: t_0_0 += 1
+            total_1, total_0 = t_1_1 + t_1_0, t_0_1 + t_0_0
+            p_1_to_1 = (t_1_1 / total_1) if total_1 > 0 else 0
+            p_0_to_1 = (t_0_1 / total_0) if total_0 > 0 else 0
+            prob_markov[num] = (p_1_to_1 * 100) if num in ultimo_sorteio else (p_0_to_1 * 100)
+
     for comb in itertools.combinations(range(1, 26), n_dezenas):
         f_comb = frozenset(comb)
         impares = sum(1 for d in f_comb if d % 2 != 0)
         
+        # Otimização de Processamento Global
         if impares not in imp_d:
             if random.random() > 0.05: continue
-                
+            
         qtd_primos = sum(1 for d in f_comb if d in primos)
-        eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
-        
-        score_grafo = sum(matriz_afinidade[comb[i]][comb[j]] for i in range(n_dezenas) for j in range(i+1, n_dezenas))
-        
         qtd_moldura = sum(1 for d in f_comb if d in moldura)
         qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
         soma_total = sum(f_comb)
         repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
+        eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
+        eh_ouro = eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1])
 
-        if eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1]):
-            lista_diamante.append((score_grafo, list(comb)))
-            
-        if eh_valido_basico: lista_frias.append((score_grafo, list(comb)))
-        lista_geral.append((score_grafo, list(comb)))
+        # Calculo das Notas M1, M2, M3
+        if motor_id == 1:
+            score = sum(counts[d] for d in f_comb)
+            score_frias_val = (50000 - score) / 100.0
+            score_val = score / 100.0
+            if impares in imp_d: 
+                score_frias_val += 50
+                score_val += 50
+            if qtd_primos in pri_d: 
+                score_frias_val += 30
+                score_val += 30
+        elif motor_id == 2:
+            score_val = sum(matriz_afinidade[comb[i]][comb[j]] for i in range(n_dezenas) for j in range(i+1, n_dezenas))
+            score_frias_val = score_val
+        elif motor_id == 3:
+            score_val = sum(prob_markov[d] for d in f_comb)
+            score_frias_val = score_val
 
+        if eh_ouro: lista_diamante.append((score_val, list(comb)))
+        if eh_valido_basico: lista_frias.append((score_frias_val, list(comb)))
+        lista_geral.append((score_val, list(comb)))
+        
         alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
         if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
-            lista_reversa.append((score_grafo, list(comb)))
+            lista_reversa.append((score_val, list(comb)))
 
     lista_diamante.sort(key=lambda x: x[0], reverse=True)
     lista_geral.sort(key=lambda x: x[0], reverse=True) 
     lista_reversa.sort(key=lambda x: x[0], reverse=True)  
-    lista_frias.sort(key=lambda x: x[0], reverse=False)
+    lista_frias.sort(key=lambda x: x[0], reverse=(motor_id == 1)) # No M1 frias inverte, nos outros é menor nota pura
 
-    def formatar(lista): return [{"Sel": False, "Rank": r, "Pts": round(s / 10.0, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+    def formatar(lista): 
+        fator = 10.0 if motor_id == 2 else 1.0
+        return [{"Sel": False, "Rank": r, "Pts": round(s/fator, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+    
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
-
 # ------------------------------------------
-# MOTOR 3: CADEIAS DE MARKOV (INÉRCIA)
+# O NOVO SISTEMA DE MEMÓRIA (CACHE INTELIGENTE)
 # ------------------------------------------
-@st.cache_data(show_spinner=False)
-def motor_cadeias_markov(df_dados, n_dezenas):
-    dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
-    if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
-    
-    past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
-    ultimo_sorteio = past_draws[-1]
-    
-    # Passo 1: Construir a Matriz de Transição de Probabilidades para cada Dezena
-    prob_markov = {} # Nota da dezena para o PRÓXIMO sorteio
-    
-    for num in range(1, 26):
-        # Transforma o histórico inteiro em [0, 1, 1, 0, 0, 1...] para essa dezena específica
-        hist_num = [1 if num in draw else 0 for draw in past_draws]
-        
-        t_1_1 = 0 # Saiu e repetiu (Inércia)
-        t_1_0 = 0 # Saiu e falhou
-        t_0_1 = 0 # Falhou e recuperou
-        t_0_0 = 0 # Falhou e continuou falhando
-        
-        for i in range(len(hist_num) - 1):
-            if hist_num[i] == 1 and hist_num[i+1] == 1: t_1_1 += 1
-            elif hist_num[i] == 1 and hist_num[i+1] == 0: t_1_0 += 1
-            elif hist_num[i] == 0 and hist_num[i+1] == 1: t_0_1 += 1
-            elif hist_num[i] == 0 and hist_num[i+1] == 0: t_0_0 += 1
-            
-        total_1 = t_1_1 + t_1_0
-        total_0 = t_0_1 + t_0_0
-        
-        p_1_to_1 = (t_1_1 / total_1) if total_1 > 0 else 0
-        p_0_to_1 = (t_0_1 / total_0) if total_0 > 0 else 0
-        
-        # Passo 2: Define a força da dezena baseado estritamente no último concurso
-        if num in ultimo_sorteio:
-            prob_markov[num] = p_1_to_1 * 100 # Multiplicado para virar Pontuação Visual
-        else:
-            prob_markov[num] = p_0_to_1 * 100
-
-    if n_dezenas == 15: imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
-    elif n_dezenas == 16: imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
-    else: imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
-
-    primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
-    moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
-    fibonacci = {1, 2, 3, 5, 8, 13, 21}
-
-    lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
-    
-    # Passo 3: O Filtro de Monte Carlo e Soma de Probabilidades
-    for comb in itertools.combinations(range(1, 26), n_dezenas):
-        f_comb = frozenset(comb)
-        impares = sum(1 for d in f_comb if d % 2 != 0)
-        
-        if impares not in imp_d:
-            if random.random() > 0.05: continue
-                
-        qtd_primos = sum(1 for d in f_comb if d in primos)
-        eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
-        
-        # A Pontuação Pts agora reflete a Chance % Matemática dessa combinação acontecer no Próximo Sorteio
-        score_markov = sum(prob_markov[d] for d in f_comb)
-        
-        qtd_moldura = sum(1 for d in f_comb if d in moldura)
-        qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
-        soma_total = sum(f_comb)
-        repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
-
-        if eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1]):
-            lista_diamante.append((score_markov, list(comb)))
-            
-        if eh_valido_basico: lista_frias.append((score_markov, list(comb)))
-        lista_geral.append((score_markov, list(comb)))
-
-        alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
-        if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
-            lista_reversa.append((score_markov, list(comb)))
-
-    # Passo 4: O Julgamento de Markov
-    lista_diamante.sort(key=lambda x: x[0], reverse=True) # Maior chance de ocorrer agora
-    lista_geral.sort(key=lambda x: x[0], reverse=True) 
-    lista_reversa.sort(key=lambda x: x[0], reverse=True)  
-    lista_frias.sort(key=lambda x: x[0], reverse=False) # Menor chance de ocorrer (Combinações Frias de Inércia)
-
-    def formatar(lista): return [{"Sel": False, "Rank": r, "Pts": round(s, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
-    return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
-
-
-# ------------------------------------------
-# O ROTEADOR INTELIGENTE
-# ------------------------------------------
-def formatar_vazio(n_dezenas):
-    cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, n_dezenas+1)]
-    return pd.DataFrame(columns=cols_vazias)
-
-def roteador_matematico(df_dados, n_dezenas, motor_selecionado):
-    if "1." in motor_selecionado:
-        return motor_frequencia_classica(df_dados, n_dezenas)
-    elif "2." in motor_selecionado:
-        return motor_teoria_dos_grafos(df_dados, n_dezenas)
-    elif "3." in motor_selecionado:
-        return motor_cadeias_markov(df_dados, n_dezenas)
+def processar_com_memoria(df_dados, n_dezenas, motor_selecionado):
+    if "1." in motor_selecionado: motor_id = 1
+    elif "2." in motor_selecionado: motor_id = 2
+    elif "3." in motor_selecionado: motor_id = 3
     else:
-        vazio = formatar_vazio(n_dezenas)
+        cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, n_dezenas+1)]
+        vazio = pd.DataFrame(columns=cols_vazias)
         return vazio, vazio, vazio, vazio
+
+    pasta_cache = "memoria_calculos"
+    if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
+    
+    arq_meta = f"{pasta_cache}/M{motor_id}_{n_dezenas}_meta.txt"
+    prefixo_csv = f"{pasta_cache}/M{motor_id}_{n_dezenas}"
+    tamanho_banco_atual = len(df_dados)
+
+    # Tenta usar a memória se o banco não sofreu alterações
+    if os.path.exists(arq_meta):
+        with open(arq_meta, "r") as f: tamanho_salvo = int(f.read().strip())
+        if tamanho_salvo == tamanho_banco_atual:
+            try:
+                dia = pd.read_csv(f"{prefixo_csv}_dia.csv", sep=";")
+                fri = pd.read_csv(f"{prefixo_csv}_fri.csv", sep=";")
+                ger = pd.read_csv(f"{prefixo_csv}_ger.csv", sep=";")
+                rev = pd.read_csv(f"{prefixo_csv}_rev.csv", sep=";")
+                return dia, fri, ger, rev
+            except: pass # Se os arquivos falharam, recalcula
+
+    # Se a base mudou (ou a memória sumiu), liga os motores!
+    dia, fri, ger, rev = executar_logica_motora(df_dados, n_dezenas, motor_id)
+    
+    # Salva no Cofre de Memória para ficar instantâneo na próxima
+    dia.to_csv(f"{prefixo_csv}_dia.csv", sep=";", index=False)
+    fri.to_csv(f"{prefixo_csv}_fri.csv", sep=";", index=False)
+    ger.to_csv(f"{prefixo_csv}_ger.csv", sep=";", index=False)
+    rev.to_csv(f"{prefixo_csv}_rev.csv", sep=";", index=False)
+    with open(arq_meta, "w") as f: f.write(str(tamanho_banco_atual))
+    
+    return dia, fri, ger, rev
 
 # ------------------------------------------
 
@@ -454,7 +345,10 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
         else: df_novo = pd.read_excel(arquivo_upado)
         df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
         st.cache_data.clear()
-        st.success("Sincronização concluída.")
+        st.success("Sincronização concluída. As memórias dos motores serão resetadas!")
+        # Apaga o cache antigo quando a base muda
+        if os.path.exists("memoria_calculos"):
+            for f in os.listdir("memoria_calculos"): os.remove(os.path.join("memoria_calculos", f))
         st.rerun()
 
 st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
@@ -481,17 +375,17 @@ if df is not None:
         
         with c_btn:
             if st.button("▶ Gerar", use_container_width=True, type="secondary"):
-                with st.spinner(f"Processando {MOTOR_ESCOLHIDO}..."):
-                    dia, fri, ger, rev = roteador_matematico(df, N_DEZENAS, MOTOR_ESCOLHIDO)
+                with st.spinner(f"Acessando Memória / Processando {MOTOR_ESCOLHIDO}..."):
+                    dia, fri, ger, rev = processar_com_memoria(df, N_DEZENAS, MOTOR_ESCOLHIDO)
                     
                     if dia.empty:
                         st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento.")
                     
-                    # O "Mecanismo de Segurança" (Iceberg Sampling) atua aqui
-                    st.session_state["df_diamante"] = dia.head(100).sample(min(10, len(dia))).sort_values("Rank") if not dia.empty else dia
-                    st.session_state["df_reversa"] = rev.head(100).sample(min(10, len(rev))).sort_values("Rank") if not rev.empty else rev
-                    st.session_state["df_frias"] = fri.head(1000).sample(min(50, len(fri))).sort_values("Rank") if not fri.empty else fri
-                    st.session_state["df_geral"] = ger.head(2000).sample(min(100, len(ger))).sort_values("Rank") if not ger.empty else ger
+                    # Sem sorteios randômicos. Mostra as 500 melhores estáticas da elite!
+                    st.session_state["df_diamante"] = dia.head(500) if not dia.empty else dia
+                    st.session_state["df_reversa"] = rev.head(500) if not rev.empty else rev
+                    st.session_state["df_frias"] = fri.head(500) if not fri.empty else fri
+                    st.session_state["df_geral"] = ger.head(500) if not ger.empty else ger
                     st.session_state["N_GERADO"] = N_DEZENAS
                     st.session_state["gerado"] = True
                     st.session_state["MOTOR_GERADO"] = MOTOR_ESCOLHIDO
@@ -514,7 +408,6 @@ if df is not None:
             with st.container(border=True):
                 with st.container():
                     st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
-                    
                     for num in range(1, 26):
                         selecionada = num in st.session_state["palpite_manual"]
                         tipo_btn = "primary" if selecionada else "secondary"
@@ -578,52 +471,65 @@ if df is not None:
                 """, unsafe_allow_html=True)
             
             elif validar_listas and len(selecionadas) == 15:
-                if not st.session_state.get("gerado"):
-                    st.warning("Gere as combinações nas tabelas ao lado primeiro!")
-                else:
-                    set_sorteadas = set(selecionadas)
-                    n_gerado = st.session_state['N_GERADO']
-                    colunas_b = [f"B{i+1}" for i in range(n_gerado)]
+                # O NOVO SUPER VALIDADOR ONISCIENTE (LÊ DA MEMÓRIA DOS CSVs)
+                set_sorteadas = set(selecionadas)
+                n_gerado = st.session_state.get('N_GERADO', 15)
+                colunas_b = [f"B{i+1}" for i in range(n_gerado)]
+                
+                resultados_duelo = {}
+                nomes_motores = {1: "Frequência Clássica", 2: "Teoria dos Grafos", 3: "Cadeias de Markov"}
+                
+                # Para cada motor existente, ele checa o cofre de memória
+                for motor_id in [1, 2, 3]:
+                    prefixo = f"memoria_calculos/M{motor_id}_{n_dezenas}"
+                    secoes = [("💎 Diamante", f"{prefixo}_dia.csv"), ("❄️ Elite", f"{prefixo}_fri.csv"), 
+                              ("🔥 Geral", f"{prefixo}_ger.csv"), ("🔄 Reversa", f"{prefixo}_rev.csv")]
                     
-                    listas_para_conferir = [
-                        ("💎 Diamante", df_dia_ed), ("🔄 Reversa", df_rev_ed),
-                        ("❄️ Elite", df_fri_ed), ("🔥 Geral", df_ger_ed)
-                    ]
-
-                    melhor_acerto = 0
-                    mensagem = ""
-                    lista_vencedora = ""
+                    melhor_acerto_motor = 0
+                    msg_motor = ""
                     
-                    for nome_lista, df_lista in listas_para_conferir:
-                        if not df_lista.empty:
+                    for nome_lista, caminho_csv in secoes:
+                        if os.path.exists(caminho_csv):
+                            df_lista = pd.read_csv(caminho_csv, sep=';')
                             for index, row in df_lista.iterrows():
                                 jogo = set([int(row[col]) for col in colunas_b])
                                 acertos = len(set_sorteadas.intersection(jogo))
-                                if acertos > melhor_acerto:
-                                    melhor_acerto = acertos
-                                    mensagem = f"{acertos} acertos na linha #{row['Rank']} da lista {nome_lista}."
-                                    lista_vencedora = nome_lista
+                                if acertos > melhor_acerto_motor:
+                                    melhor_acerto_motor = acertos
+                                    msg_motor = f"Linha #{int(row['Rank'])} ({nome_lista})"
+                    
+                    if melhor_acerto_motor > 0:
+                        resultados_duelo[motor_id] = {"acertos": melhor_acerto_motor, "msg": msg_motor}
 
-                    if melhor_acerto >= 14: st.success(f"🎉 **CRUZAMENTO PERFEITO!** {mensagem}")
-                    elif melhor_acerto >= 11: st.info(f"👍 **CRUZAMENTO POSITIVO:** {mensagem}")
-                    else: st.error(f"📉 **FALHA:** Maior acerto nas listas geradas: {melhor_acerto}.")
-
-                    # --- GRAVADOR DE PERFORMANCE DE MOTORES ---
-                    if melhor_acerto >= 11:
-                        novo_registro_perf = pd.DataFrame([{
-                            "Data_Validacao": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                            "Motor_Utilizado": st.session_state["MOTOR_GERADO"],
-                            "Lista_Origem": lista_vencedora,
-                            "Acertos": melhor_acerto,
-                            "Dezenas": ", ".join([f"{d:02d}" for d in selecionadas])
-                        }])
-                        if os.path.exists(ARQUIVO_PERFORMANCE):
-                            df_perf = pd.read_csv(ARQUIVO_PERFORMANCE, sep=';', encoding='utf-8')
-                            df_perf = pd.concat([df_perf, novo_registro_perf], ignore_index=True)
-                        else:
-                            df_perf = novo_registro_perf
-                        df_perf.to_csv(ARQUIVO_PERFORMANCE, index=False, sep=';')
-                        st.caption(f"📊 *Score gravado na performance do motor: {st.session_state['MOTOR_GERADO']}*")
+                # Imprime o Painel do Duelo
+                if resultados_duelo:
+                    melhor_geral = max([res["acertos"] for res in resultados_duelo.values()])
+                    if melhor_geral >= 14: st.success(f"🎉 **CRUZAMENTO PERFEITO!** Máximo de {melhor_geral} acertos.")
+                    elif melhor_geral >= 11: st.info(f"👍 **CRUZAMENTO POSITIVO:** Máximo de {melhor_geral} acertos.")
+                    else: st.error(f"📉 **FALHA:** Nenhuma estratégia passou de {melhor_geral} acertos.")
+                    
+                    st.markdown("**🛡️ Raio-X contra todas as Estratégias:**")
+                    for mid, res in resultados_duelo.items():
+                        icone = "✅" if res['acertos'] >= 11 else "❌"
+                        st.markdown(f"- {icone} **{nomes_motores[mid]}**: {res['acertos']} pts [{res['msg']}]")
+                        
+                        # Grava na base de performance apenas as estratégias que pontuaram bem
+                        if res['acertos'] >= 11:
+                            novo_registro_perf = pd.DataFrame([{
+                                "Data_Validacao": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                                "Motor_Utilizado": nomes_motores[mid],
+                                "Lista_Origem": res['msg'].split("(")[1].replace(")", ""),
+                                "Acertos": res['acertos'],
+                                "Dezenas": ", ".join([f"{d:02d}" for d in selecionadas])
+                            }])
+                            if os.path.exists(ARQUIVO_PERFORMANCE):
+                                df_perf = pd.read_csv(ARQUIVO_PERFORMANCE, sep=';', encoding='utf-8')
+                                df_perf = pd.concat([df_perf, novo_registro_perf], ignore_index=True)
+                            else: df_perf = novo_registro_perf
+                            df_perf.to_csv(ARQUIVO_PERFORMANCE, index=False, sep=';')
+                    st.caption("📊 *Scores gravados no banco de dados com sucesso!*")
+                else:
+                    st.warning("Gere os motores ao menos uma vez para criar a Memória do Sistema antes de validar!")
 
             elif salvar_db and len(selecionadas) == 15:
                 dezenas_cols = [c for c in df.columns if "Dezena" in c]
@@ -637,8 +543,7 @@ if df is not None:
                         ja_sorteado = True
                         break
                 
-                if ja_sorteado:
-                    st.error("🚨 **Este jogo já existe no banco histórico!**")
+                if ja_sorteado: st.error("🚨 **Este jogo já existe no banco histórico!**")
                 else:
                     conc_col = next((c for c in df.columns if 'Concurso' in c or 'Sorteio' in c or 'N°' in c), None)
                     data_col = next((c for c in df.columns if 'Data' in c), None)
@@ -647,8 +552,7 @@ if df is not None:
                     if conc_col: 
                         try: novo_registro[conc_col] = int(df[conc_col].max()) + 1
                         except: novo_registro[conc_col] = len(df) + 1
-                    if data_col: 
-                        novo_registro[data_col] = datetime.today().strftime('%d/%m/%Y')
+                    if data_col: novo_registro[data_col] = datetime.today().strftime('%d/%m/%Y')
                     
                     for i, col in enumerate(dezenas_cols):
                         if i < 15: novo_registro[col] = selecionadas[i]
@@ -656,7 +560,9 @@ if df is not None:
                     df_novo = pd.concat([df, pd.DataFrame([novo_registro])], ignore_index=True)
                     df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
                     st.cache_data.clear()
-                    st.success("✅ **Jogo Gravado! Atualizando base...**")
+                    st.success("✅ **Jogo Gravado! A memória matemática será resetada.**")
+                    if os.path.exists("memoria_calculos"):
+                        for f in os.listdir("memoria_calculos"): os.remove(os.path.join("memoria_calculos", f))
                     st.rerun() 
 
             elif (verificar or validar_listas or salvar_db):
