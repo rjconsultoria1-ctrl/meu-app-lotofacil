@@ -6,21 +6,12 @@ import os
 from datetime import datetime
 
 # ==========================================
-# 1. TRATAMENTO DO BOTÃO SAIR (HTML -> PYTHON)
-# ==========================================
-# Ouve o clique do link HTML "Sair" na barra superior
-if "logout" in st.query_params:
-    st.session_state["logged_in"] = False
-    st.query_params.clear()
-    st.rerun()
-
-# ==========================================
-# 2. CONFIGURAÇÃO DA PÁGINA
+# 1. CONFIGURAÇÃO DA PÁGINA
 # ==========================================
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 3. INJEÇÃO DE CSS BLINDADO (COMPATÍVEL COM 100% DOS CELULARES)
+# 2. CSS BLINDADO (A "TABELA INVISÍVEL" E A BARRA FIORI)
 # ==========================================
 st.markdown("""
     <style>
@@ -38,24 +29,38 @@ st.markdown("""
             padding-right: 1rem;
         }
 
-        /* --- BARRA FIORI COM BOTÃO SAIR INTEGRADO --- */
+        /* --- O BOTÃO SAIR NO TOPO DIREITO --- */
+        /* O botão Sair é o 2º elemento renderizado na tela. Vamos cravá-lo no topo direito! */
+        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) {
+            position: fixed !important;
+            top: 10px !important;
+            right: 20px !important;
+            z-index: 99999 !important;
+            width: auto !important;
+        }
+        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button {
+            background-color: transparent !important;
+            color: white !important;
+            border: 1px solid rgba(255,255,255,0.6) !important;
+            padding: 2px 15px !important;
+            height: 32px !important;
+            font-size: 14px !important;
+            border-radius: 4px !important;
+        }
+        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button:hover {
+            background-color: rgba(255,255,255,0.2) !important; border-color: white !important;
+        }
+
+        /* --- BARRA FIORI AZUL --- */
         .fiori-header-bar {
             background-color: #354A5F; color: white; padding: 10px 20px;
             display: flex; justify-content: space-between; align-items: center;
             font-family: Arial, sans-serif; position: fixed;
-            top: 0; left: 0; width: 100vw; z-index: 9999;
+            top: 0; left: 0; width: 100vw; z-index: 9998;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
         .header-spacer { margin-top: 50px; }
         
-        /* Link Sair com visual de botão */
-        .btn-sair-link {
-            color: white !important; text-decoration: none !important; font-weight: bold;
-            border: 1px solid rgba(255,255,255,0.5); padding: 4px 12px; border-radius: 4px;
-            margin-left: 15px; font-size: 14px;
-        }
-        .btn-sair-link:hover { background-color: rgba(255,255,255,0.2); border-color: white; }
-
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
@@ -64,32 +69,39 @@ st.markdown("""
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
 
-        /* --- O VOLANTE ROXO E RESPONSIVIDADE MOBILE BLINDADA --- */
-        /* Foca estritamente nas 5 primeiras linhas de botões do painel Simulador */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) button {
-            border-radius: 50% !important; 
-            height: 42px !important; width: 42px !important;
-            padding: 0 !important; font-size: 15px !important;
-            margin: auto !important; display: flex !important; justify-content: center !important; align-items: center !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+        /* --- A MÁGICA DA TABELA INVISÍVEL NO VOLANTE --- */
+        /* Trava as linhas do volante para não quebrarem e agirem como uma grade */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important; /* A trava de segurança! */
+            gap: 6px !important;
+            justify-content: center !important;
+            margin-bottom: 6px !important;
         }
-        /* Bolinha Desmarcada */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) button[kind="secondary"] {
-            background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
-        }
-        /* Bolinha Marcada */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) button[kind="primary"] {
-            background-color: #5C2D91 !important; color: white !important; border: 2px solid #5C2D91 !important;
+        /* Trava as colunas para não expandirem */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: auto !important;
+            flex: 0 0 auto !important;
+            min-width: 0 !important;
         }
 
-        /* Trava Responsiva: Impede que o celular quebre as 5 bolinhas em uma lista */
-        @media (max-width: 640px) {
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) div[data-testid="stHorizontalBlock"] {
-                flex-direction: row !important; flex-wrap: nowrap !important; justify-content: center !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) div[data-testid="column"] {
-                min-width: 18% !important; flex: 0 0 18% !important; padding: 2px !important;
-            }
+        /* FORMATANDO EXATAMENTE AS 25 BOLINHAS DO VOLANTE */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child > div[data-testid="stVerticalBlock"] > div.element-container:nth-child(-n+5) button {
+            border-radius: 50% !important;
+            height: 42px !important; width: 42px !important;
+            padding: 0 !important; font-size: 15px !important;
+            font-weight: bold !important;
+            display: flex !important; justify-content: center !important; align-items: center !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+        }
+        /* Cor Desmarcada */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child > div[data-testid="stVerticalBlock"] > div.element-container:nth-child(-n+5) button[kind="secondary"] {
+            background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
+        }
+        /* Cor Marcada */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child > div[data-testid="stVerticalBlock"] > div.element-container:nth-child(-n+5) button[kind="primary"] {
+            background-color: #5C2D91 !important; color: white !important; border: none !important;
         }
         
         /* --- CARDS DE RESULTADOS --- */
@@ -118,10 +130,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# O BOTÃO SAIR DEVE FICAR AQUI NO TOPO (Para o CSS pegar ele e levar para a barra azul)
+if st.button("Sair 🚪"):
+    st.session_state["logged_in"] = False
+    st.rerun()
+
 ARQUIVO_BASE = "banco_dados.csv"
 
 # ==========================================
-# 4. CONTROLE DE SESSÃO E LOGIN
+# 3. CONTROLE DE SESSÃO E LOGIN
 # ==========================================
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
@@ -179,14 +196,13 @@ if not st.session_state["logged_in"]:
     st.stop()
 
 # ==========================================
-# 5. O APLICATIVO (Layout Analítico)
+# 4. O APLICATIVO (Layout Analítico)
 # ==========================================
 
-# Barra superior com o botão Sair embutido no HTML
 st.markdown("""
     <div class="fiori-header-bar">
         <div><span style="color:#6CB2EB;">💎 Gerador VIP</span> | Painel Simulador Lotofácil</div>
-        <div>🔍 🔔 ⚙️ | <a href="/?logout=true" target="_self" class="btn-sair-link">Sair 🚪</a></div>
+        <div>🔍 🔔 ⚙️ | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
     </div>
     <div class="header-spacer"></div>
 """, unsafe_allow_html=True)
@@ -318,7 +334,7 @@ if df is not None:
             c_volante, c_resumo = st.columns([1, 1.2])
             
             with c_volante:
-                # Volante (Mágica responsiva reescrita)
+                # O Volante encapsulado na sua "Tabela Invisível" (A mágica do CSS atua aqui)
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
