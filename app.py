@@ -6,6 +6,7 @@ import itertools
 import os
 import random
 import threading
+import math
 from datetime import datetime
 
 # ==========================================
@@ -143,13 +144,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
-# LÓGICAS DOS MOTORES
+# LÓGICAS DOS MOTORES (1 a 4)
 # ------------------------------------------
 def executar_logica_motora(df_dados, n_dezenas, motor_id):
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
     if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
     past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
     ultimo_sorteio = past_draws[-1]
+    total_draws = len(past_draws)
     
     if n_dezenas == 15: imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
     elif n_dezenas == 16: imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
@@ -159,11 +161,10 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     fibonacci = {1, 2, 3, 5, 8, 13, 21}
     lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
 
-    # Setup M1
+    # Setup Motores
     if motor_id == 1:
         all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
         counts = Counter(all_numbers)
-    # Setup M2
     elif motor_id == 2:
         matriz_afinidade = [[0] * 26 for _ in range(26)]
         for draw in past_draws:
@@ -172,7 +173,6 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
                 for j in range(i+1, len(lst)):
                     matriz_afinidade[lst[i]][lst[j]] += 1
                     matriz_afinidade[lst[j]][lst[i]] += 1
-    # Setup M3
     elif motor_id == 3:
         prob_markov = {}
         for num in range(1, 26):
@@ -187,6 +187,18 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
             p_1_to_1 = (t_1_1 / total_1) if total_1 > 0 else 0
             p_0_to_1 = (t_0_1 / total_0) if total_0 > 0 else 0
             prob_markov[num] = (p_1_to_1 * 100) if num in ultimo_sorteio else (p_0_to_1 * 100)
+    elif motor_id == 4:
+        # MOTOR 4: ENTROPIA DE SHANNON
+        all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
+        counts = Counter(all_numbers)
+        prob_entropia = {d: counts.get(d, 0) / total_draws for d in range(1, 26)}
+        
+        def calc_entropia(combinacao):
+            return -sum(prob_entropia[d] * math.log2(prob_entropia[d]) for d in combinacao if prob_entropia.get(d, 0) > 0)
+            
+        # Descobre a "Assinatura Natural" histórica
+        hist_entropias = [calc_entropia(draw) for draw in past_draws]
+        entropia_ideal = sum(hist_entropias) / len(hist_entropias) if hist_entropies else 0
 
     for comb in itertools.combinations(range(1, 26), n_dezenas):
         f_comb = frozenset(comb)
@@ -200,9 +212,11 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
         qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
         soma_total = sum(f_comb)
         repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
+        
         eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
         eh_ouro = eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1])
 
+        # Pontuações
         if motor_id == 1:
             score = sum(counts[d] for d in f_comb)
             score_frias_val = (50000 - score) / 100.0
@@ -214,6 +228,12 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
             score_frias_val = score_val
         elif motor_id == 3:
             score_val = sum(prob_markov[d] for d in f_comb)
+            score_frias_val = score_val
+        elif motor_id == 4:
+            H_comb = calc_entropia(f_comb)
+            # Aproximação da Entropia Ideal (100 pts é a perfeição)
+            distancia = abs(H_comb - entropia_ideal)
+            score_val = max(0, 100.0 - (distancia * 50.0)) 
             score_frias_val = score_val
 
         if eh_ouro: lista_diamante.append((score_val, list(comb)))
@@ -227,7 +247,7 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     lista_diamante.sort(key=lambda x: x[0], reverse=True)
     lista_geral.sort(key=lambda x: x[0], reverse=True) 
     lista_reversa.sort(key=lambda x: x[0], reverse=True)  
-    lista_frias.sort(key=lambda x: x[0], reverse=(motor_id == 1)) 
+    lista_frias.sort(key=lambda x: x[0], reverse=(motor_id in [1, 4])) # No M1 e M4 frias inverte
 
     def formatar(lista): 
         fator = 10.0 if motor_id == 2 else 1.0
@@ -236,28 +256,22 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
 # ------------------------------------------
-# TRABALHADOR FANTASMA (ORQUESTRAÇÃO BACKGROUND)
+# TRABALHADOR FANTASMA & RADAR
 # ------------------------------------------
 def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
-    """ Este fantasma roda invisível salvando tudo que falta no cofre """
     pasta_cache = "memoria_calculos"
     if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
-    
-    # Ele tenta varrer os motores ativos e as dezenas 15, 16, 17
-    for motor_id in [1, 2, 3]:
+    # AGORA COM 4 MOTORES
+    for motor_id in [1, 2, 3, 4]:
         for n_dez in [15, 16, 17]:
             arq_meta = f"{pasta_cache}/M{motor_id}_{n_dez}_meta.txt"
             prefixo_csv = f"{pasta_cache}/M{motor_id}_{n_dez}"
-            
             precisa_calcular = True
             if os.path.exists(arq_meta):
                 with open(arq_meta, "r") as f:
                     try:
-                        tamanho_salvo = int(f.read().strip())
-                        if tamanho_salvo == tamanho_banco_atual:
-                            precisa_calcular = False # Já tá pronto, pula pro próximo
+                        if int(f.read().strip()) == tamanho_banco_atual: precisa_calcular = False 
                     except: pass
-            
             if precisa_calcular:
                 try:
                     dia, fri, ger, rev = executar_logica_motora(df_dados, n_dez, motor_id)
@@ -266,52 +280,39 @@ def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
                     ger.to_csv(f"{prefixo_csv}_ger.csv", sep=";", index=False)
                     rev.to_csv(f"{prefixo_csv}_rev.csv", sep=";", index=False)
                     with open(arq_meta, "w") as f: f.write(str(tamanho_banco_atual))
-                except Exception as e:
-                    pass # O fantasma morre em silêncio se algo der errado
+                except: pass
 
-# ------------------------------------------
-# PROCESSAMENTO DE TELA (O QUE O USUÁRIO VÊ)
-# ------------------------------------------
 def processar_com_memoria(df_dados, n_dezenas, motor_selecionado):
     if "1." in motor_selecionado: motor_id = 1
     elif "2." in motor_selecionado: motor_id = 2
     elif "3." in motor_selecionado: motor_id = 3
+    elif "4." in motor_selecionado: motor_id = 4
     else:
         cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, n_dezenas+1)]
-        vazio = pd.DataFrame(columns=cols_vazias)
-        return vazio, vazio, vazio, vazio
+        return pd.DataFrame(columns=cols_vazias), pd.DataFrame(columns=cols_vazias), pd.DataFrame(columns=cols_vazias), pd.DataFrame(columns=cols_vazias)
 
     pasta_cache = "memoria_calculos"
     if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
-    
     arq_meta = f"{pasta_cache}/M{motor_id}_{n_dezenas}_meta.txt"
     prefixo_csv = f"{pasta_cache}/M{motor_id}_{n_dezenas}"
     tamanho_banco_atual = len(df_dados)
 
-    # 1. Tenta pegar a memória pronta instantaneamente
     if os.path.exists(arq_meta):
         with open(arq_meta, "r") as f: tamanho_salvo = int(f.read().strip())
         if tamanho_salvo == tamanho_banco_atual:
             try:
-                dia = pd.read_csv(f"{prefixo_csv}_dia.csv", sep=";")
-                fri = pd.read_csv(f"{prefixo_csv}_fri.csv", sep=";")
-                ger = pd.read_csv(f"{prefixo_csv}_ger.csv", sep=";")
-                rev = pd.read_csv(f"{prefixo_csv}_rev.csv", sep=";")
-                return dia, fri, ger, rev
+                return pd.read_csv(f"{prefixo_csv}_dia.csv", sep=";"), pd.read_csv(f"{prefixo_csv}_fri.csv", sep=";"), pd.read_csv(f"{prefixo_csv}_ger.csv", sep=";"), pd.read_csv(f"{prefixo_csv}_rev.csv", sep=";")
             except: pass 
 
-    # 2. Se não tem memória pra *essa* tela, calcula agora e trava a tela (Obrigatório)
     dia, fri, ger, rev = executar_logica_motora(df_dados, n_dezenas, motor_id)
     dia.to_csv(f"{prefixo_csv}_dia.csv", sep=";", index=False)
     fri.to_csv(f"{prefixo_csv}_fri.csv", sep=";", index=False)
     ger.to_csv(f"{prefixo_csv}_ger.csv", sep=";", index=False)
     rev.to_csv(f"{prefixo_csv}_rev.csv", sep=";", index=False)
     with open(arq_meta, "w") as f: f.write(str(tamanho_banco_atual))
-    
     return dia, fri, ger, rev
 
 # ------------------------------------------
-
 df = None
 if os.path.exists(ARQUIVO_BASE):
     try: df = pd.read_csv(ARQUIVO_BASE, sep=';', encoding='utf-8')
@@ -333,6 +334,15 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
         st.rerun()
 
 st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+
+# ------------------------------------------
+# RADAR DO FANTASMA (DASHBOARD VISUAL)
+# ------------------------------------------
+pasta_cache = "memoria_calculos"
+TOTAL_TAREFAS = 12 # 4 motores * 3 tipos de dezenas
+tarefas_concluidas = len([f for f in os.listdir(pasta_cache) if f.endswith("_meta.txt")]) if os.path.exists(pasta_cache) else 0
+progresso_perc = min(tarefas_concluidas / TOTAL_TAREFAS, 1.0)
+st.progress(progresso_perc, text=f"📡 Radar de Processos em Fila: Cofre de Memória {tarefas_concluidas}/{TOTAL_TAREFAS} concluído ({(progresso_perc*100):.0f}%)")
 
 # ==========================================
 # DIVISÃO DA TELA E O SIMULADOR BLINDADO
@@ -357,18 +367,15 @@ if df is not None:
         with c_btn:
             if st.button("▶ Gerar", use_container_width=True, type="secondary"):
                 with st.spinner(f"Acessando Memória / Processando {MOTOR_ESCOLHIDO}..."):
-                    
-                    # 1. Libera a tela calculando apenas a opção principal que o usuário quer ver AGORA
                     dia, fri, ger, rev = processar_com_memoria(df, N_DEZENAS, MOTOR_ESCOLHIDO)
                     
-                    # 2. INICIA O TRABALHADOR FANTASMA para fazer o resto debaixo dos panos!
                     tamanho_db = len(df)
                     fantasma = threading.Thread(target=worker_fantasma_calcula_tudo, args=(df.copy(), tamanho_db))
-                    fantasma.daemon = True # Se o app fechar, o fantasma morre junto sem corromper
+                    fantasma.daemon = True 
                     fantasma.start()
                     
                     if dia.empty: st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento.")
-                    else: st.toast("✅ Motor principal carregado! (Trabalhador Fantasma iniciado no background...)")
+                    else: st.toast("✅ Motor carregado! (Trabalhador Fantasma operando em background...)")
                     
                     st.session_state["df_diamante"] = dia.head(500) if not dia.empty else dia
                     st.session_state["df_reversa"] = rev.head(500) if not rev.empty else rev
@@ -377,6 +384,8 @@ if df is not None:
                     st.session_state["N_GERADO"] = N_DEZENAS
                     st.session_state["gerado"] = True
                     st.session_state["MOTOR_GERADO"] = MOTOR_ESCOLHIDO
+                    # Força uma atualização leve na tela para o Radar avançar mais rápido
+                    st.rerun()
 
         cfg_col = {"Sel": st.column_config.CheckboxColumn("Sel", default=False)}
         a1, a2, a3, a4 = st.tabs(["💎 Ranking Diamante", "❄️ Ranking Elite", "🔥 Ranking Geral", "🔄 Ranking Reversa"])
@@ -451,9 +460,9 @@ if df is not None:
                 n_gerado = st.session_state.get('N_GERADO', 15)
                 colunas_b = [f"B{i+1}" for i in range(n_gerado)]
                 resultados_duelo = {}
-                nomes_motores = {1: "Frequência Clássica", 2: "Teoria dos Grafos", 3: "Cadeias de Markov"}
+                nomes_motores = {1: "Frequência Clássica", 2: "Teoria dos Grafos", 3: "Cadeias de Markov", 4: "Entropia de Shannon"}
                 
-                for motor_id in [1, 2, 3]:
+                for motor_id in [1, 2, 3, 4]:
                     prefixo = f"memoria_calculos/M{motor_id}_{n_gerado}"
                     secoes = [("💎 Diamante", f"{prefixo}_dia.csv"), ("❄️ Elite", f"{prefixo}_fri.csv"), 
                               ("🔥 Geral", f"{prefixo}_ger.csv"), ("🔄 Reversa", f"{prefixo}_rev.csv")]
