@@ -153,7 +153,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
-# LÓGICAS DOS MOTORES (ANTI-CRASH COM HEAPQ)
+# LÓGICAS DOS 5 MOTORES (ANTI-CRASH)
 # ------------------------------------------
 def executar_logica_motora(df_dados, n_dezenas, motor_id):
     dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
@@ -170,7 +170,6 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
     fibonacci = {1, 2, 3, 5, 8, 13, 21}
     
-    # As nossas Lixeiras Inteligentes (Poupam memória RAM)
     LIMIT = 5000 
     h_diamante, h_frias, h_geral, h_reversa = [], [], [], []
 
@@ -206,12 +205,13 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
             return -sum(prob_entropia[d] * math.log2(prob_entropia[d]) for d in combinacao if prob_entropia.get(d, 0) > 0)
         hist_entropias = [calc_entropia(draw) for draw in past_draws]
         entropia_ideal = sum(hist_entropias) / len(hist_entropias) if hist_entropias else 0
+    elif motor_id == 5:
+        # O DNA Predador: Isola os últimos 30 sorteios
+        temporada_atual = past_draws[-30:]
 
-    # EXECUÇÃO DO MOTOR (Com alívio de CPU para não travar a tela)
+    # EXECUÇÃO DO MOTOR
     for idx, comb in enumerate(itertools.combinations(range(1, 26), n_dezenas)):
-        # FREIO ABS: A cada 100.000 cálculos, respira por 1 milissegundo para o Streamlit aceitar cliques na tela!
-        if idx % 100000 == 0:
-            time.sleep(0.001) 
+        if idx % 100000 == 0: time.sleep(0.001) 
 
         f_comb = frozenset(comb)
         impares = sum(1 for d in f_comb if d % 2 != 0)
@@ -232,22 +232,30 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
         if motor_id == 1:
             score = sum(counts[d] for d in f_comb)
             score_val = score / 100.0
-            score_frias_val = (50000 - score) / 100.0 # Frias clássica: alta pontuação para pouca frequência
+            score_frias_val = (50000 - score) / 100.0
             if impares in imp_d: score_frias_val += 50; score_val += 50
             if qtd_primos in pri_d: score_frias_val += 30; score_val += 30
         elif motor_id == 2:
             score_val = sum(matriz_afinidade[comb[i]][comb[j]] for i in range(n_dezenas) for j in range(i+1, n_dezenas))
-            score_frias_val = -score_val # Oposto da afinidade
+            score_frias_val = -score_val
         elif motor_id == 3:
             score_val = sum(prob_markov[d] for d in f_comb)
-            score_frias_val = -score_val # Oposto da inércia
+            score_frias_val = -score_val
         elif motor_id == 4:
             H_comb = calc_entropia(f_comb)
             distancia = abs(H_comb - entropia_ideal)
             score_val = max(0, 100.0 - (distancia * 50.0)) 
-            score_frias_val = distancia * 50.0 # Frias: o mais caótico/distante possível
+            score_frias_val = distancia * 50.0
+        elif motor_id == 5:
+            # Algoritmo Genético: Função de Adaptação (Fitness)
+            fitness = 0
+            for predador in temporada_atual:
+                acertos = len(f_comb.intersection(predador))
+                if acertos >= 11:
+                    fitness += (acertos - 10) ** 3 # Exponencial: 1, 8, 27, 64, 125
+            score_val = fitness
+            score_frias_val = -fitness # DNA Extinto (0 pts) fica no topo das Frias
 
-        # LIXEIRA INTELIGENTE: Pega apenas os 5000 Top Scores sem usar memória!
         if eh_ouro:
             if len(h_diamante) < LIMIT: heapq.heappush(h_diamante, (score_val, comb))
             elif score_val > h_diamante[0][0]: heapq.heappushpop(h_diamante, (score_val, comb))
@@ -274,11 +282,10 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
         res = []
         for r, (s, c) in enumerate(lista, 1):
             display_score = s
-            # Formatação estética para telas
             if motor_id == 2:
                 if is_fria: display_score = -s
                 display_score = display_score / 10.0
-            elif motor_id == 3 and is_fria:
+            elif motor_id in [3, 5] and is_fria:
                 display_score = -s
                 
             res.append({"Sel": False, "Rank": r, "Pts": round(display_score, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}})
@@ -292,16 +299,19 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
 def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
     pasta_cache = "memoria_calculos"
     if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
-    for motor_id in [1, 2, 3, 4]:
+    
+    for motor_id in [1, 2, 3, 4, 5]:
         for n_dez in [15, 16, 17]:
             arq_meta = f"{pasta_cache}/M{motor_id}_{n_dez}_meta.txt"
             prefixo_csv = f"{pasta_cache}/M{motor_id}_{n_dez}"
             precisa_calcular = True
+            
             if os.path.exists(arq_meta):
                 with open(arq_meta, "r") as f:
                     try:
                         if int(f.read().strip()) == tamanho_banco_atual: precisa_calcular = False 
                     except: pass
+                    
             if precisa_calcular:
                 try:
                     dia, fri, ger, rev = executar_logica_motora(df_dados, n_dez, motor_id)
@@ -310,7 +320,7 @@ def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
                     ger.to_csv(f"{prefixo_csv}_ger.csv", sep=";", index=False)
                     rev.to_csv(f"{prefixo_csv}_rev.csv", sep=";", index=False)
                     with open(arq_meta, "w") as f: f.write(str(tamanho_banco_atual))
-                    time.sleep(4) # Alívio extra pro Streamlit Cloud
+                    time.sleep(4) 
                 except: pass
 
 def processar_com_memoria(df_dados, n_dezenas, motor_selecionado):
@@ -318,6 +328,7 @@ def processar_com_memoria(df_dados, n_dezenas, motor_selecionado):
     elif "2." in motor_selecionado: motor_id = 2
     elif "3." in motor_selecionado: motor_id = 3
     elif "4." in motor_selecionado: motor_id = 4
+    elif "5." in motor_selecionado: motor_id = 5
     else:
         cols_vazias = ["Sel", "Rank", "Pts"] + [f"B{i}" for i in range(1, n_dezenas+1)]
         return pd.DataFrame(columns=cols_vazias), pd.DataFrame(columns=cols_vazias), pd.DataFrame(columns=cols_vazias), pd.DataFrame(columns=cols_vazias)
@@ -370,7 +381,7 @@ st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 # RADAR DO FANTASMA (DASHBOARD VISUAL)
 # ------------------------------------------
 pasta_cache = "memoria_calculos"
-TOTAL_TAREFAS = 12 # 4 motores * 3 tipos de dezenas
+TOTAL_TAREFAS = 15 # 5 Motores * 3 tipos de dezenas
 tarefas_concluidas = len([f for f in os.listdir(pasta_cache) if f.endswith("_meta.txt")]) if os.path.exists(pasta_cache) else 0
 progresso_perc = min(tarefas_concluidas / TOTAL_TAREFAS, 1.0)
 st.progress(progresso_perc, text=f"📡 Radar de Processos em Fila: Cofre de Memória {tarefas_concluidas}/{TOTAL_TAREFAS} concluído ({(progresso_perc*100):.0f}%)")
@@ -484,9 +495,9 @@ if df is not None:
                 n_gerado = st.session_state.get('N_GERADO', 15)
                 colunas_b = [f"B{i+1}" for i in range(n_gerado)]
                 resultados_duelo = {}
-                nomes_motores = {1: "Frequência Clássica", 2: "Teoria dos Grafos", 3: "Cadeias de Markov", 4: "Entropia de Shannon"}
+                nomes_motores = {1: "Frequência Clássica", 2: "Teoria dos Grafos", 3: "Cadeias de Markov", 4: "Entropia de Shannon", 5: "Algoritmo Genético"}
                 
-                for motor_id in [1, 2, 3, 4]:
+                for motor_id in [1, 2, 3, 4, 5]:
                     prefixo = f"memoria_calculos/M{motor_id}_{n_gerado}"
                     secoes = [("💎 Diamante", f"{prefixo}_dia.csv"), ("❄️ Elite", f"{prefixo}_fri.csv"), 
                               ("🔥 Geral", f"{prefixo}_ger.csv"), ("🔄 Reversa", f"{prefixo}_rev.csv")]
