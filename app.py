@@ -28,7 +28,7 @@ except AttributeError:
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 3. CSS BLINDADO (VISUAL LIMPO E DIRETO)
+# 3. CSS GLOBAL E BLINDAGEM DE LAYOUT
 # ==========================================
 st.markdown("""
     <style>
@@ -42,6 +42,9 @@ st.markdown("""
             padding-top: 0rem !important; padding-bottom: 2rem; 
             max-width: 95% !important; padding-left: 1rem; padding-right: 1rem;
         }
+
+        /* --- REMOVE AS BORDAS PADRÕES DO FORMULÁRIO DO STREAMLIT --- */
+        [data-testid="stForm"] { border: none !important; padding: 0 !important; }
 
         /* --- BARRA FIORI COM BOTÃO SAIR --- */
         .fiori-header-bar {
@@ -64,7 +67,7 @@ st.markdown("""
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
 
-        /* --- INTEGRAÇÃO DO HEADER ROXO --- */
+        /* --- INTEGRAÇÃO DO HEADER ROXO DO SIMULADOR --- */
         .simulador-header {
             background-color: #5C2D91; color: white; padding: 12px;
             font-weight: bold; text-align: center; font-size: 14px;
@@ -76,8 +79,7 @@ st.markdown("""
             padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
         }
 
-        /* --- A MÁGICA DA GRADE (JS HACK) --- */
-        /* Esta classe será injetada via JS apenas no bloco do volante */
+        /* --- A MÁGICA DA GRADE (JS HACK) SÓ PARA AS BOLINHAS --- */
         .volante-grid-perfect {
             display: grid !important;
             grid-template-columns: repeat(5, 1fr) !important;
@@ -85,7 +87,7 @@ st.markdown("""
             justify-content: center !important;
             justify-items: center !important;
             max-width: 320px !important;
-            margin: 0 auto !important; /* Centraliza a grade no container */
+            margin: 0 auto !important; 
             padding: 10px 0 !important;
         }
         
@@ -107,12 +109,12 @@ st.markdown("""
             background-color: #5C2D91 !important; color: white !important; border: none !important;
         }
 
-        /* --- BOTÕES DOS QUADROS DE AÇÃO --- */
+        /* --- BOTÕES DOS QUADROS DE AÇÃO (Não são afetados pelo grid) --- */
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
         
-        /* --- CARDS DE RESULTADOS (O Visual Aprovado) --- */
+        /* --- CARDS DE RESULTADOS --- */
         .faixa-resultados { background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333; margin-top: 30px; margin-bottom: 15px; border-radius: 4px; }
         .card-resultado { background-color: white; border: 1px solid #E0E0E0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%; }
         .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; text-transform: uppercase; }
@@ -124,7 +126,7 @@ st.markdown("""
 ARQUIVO_BASE = "banco_dados.csv"
 
 # ==========================================
-# 4. CONTROLE DE SESSÃO E LOGIN
+# 4. CONTROLE DE SESSÃO E VARIÁVEIS
 # ==========================================
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
@@ -147,42 +149,60 @@ def toggle_dezena(dezena):
 def limpar_volante():
     st.session_state["palpite_manual"] = set()
 
-# --- TELA DE LOGIN ---
+# ==========================================
+# 5. TELA DE LOGIN (COM ENTER ATIVO E NOVO DEGRADÊ)
+# ==========================================
 if not st.session_state["logged_in"]:
+    # O CSS específico da tela de login garante a centralização e o degradê acentuado
     st.markdown("""
         <style>
-            .stApp { background: radial-gradient(circle at 20% 30%, #E2EDF8 0%, #B8D0E8 100%); }
-            .login-box { background-color: white; padding: 3rem; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,20,50,0.15); margin-top: -10vh; }
+            .stApp { 
+                background: radial-gradient(circle at 50% 40%, #E2EDF8 0%, #9CBBE0 100%); 
+            }
+            /* Flexbox para centralizar vertical e horizontalmente sem barras brancas */
+            .main .block-container {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                padding: 0 !important;
+            }
+            .login-box { 
+                background-color: white; padding: 3rem; border-radius: 12px; 
+                box-shadow: 0 10px 30px rgba(0,20,50,0.15); width: 100%; max-width: 400px;
+            }
             .stSelectbox>div { background-color: white !important; }
         </style>
     """, unsafe_allow_html=True)
-    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        with st.container(border=False):
-            st.markdown('<div class="login-box">', unsafe_allow_html=True)
-            st.markdown("<h2 style='text-align:center; color:#0070F2; margin-top:0;'>💎 Logon</h2>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center; color:#556B82; font-size: 14px; margin-bottom: 30px;'>Gerador VIP Lotofácil</p>", unsafe_allow_html=True)
-            
-            usuario = st.text_input("Usuário", value="consultor.sd", placeholder="Digite seu usuário")
-            senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
-            st.caption("Idioma")
-            st.selectbox("", ["PT - Português", "EN - English", "ES - Español"], label_visibility="collapsed")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Logon", use_container_width=True, type="secondary"):
-                if senha == "abap123":
-                    st.session_state["logged_in"] = True
-                    st.rerun()
-                else:
-                    st.error("Falha na autenticação.")
-            st.markdown("<p style='text-align:center; font-size:12px; color:#0070F2; margin-top:15px; cursor:pointer;'>Modificar senha / Ajuda</p>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-box">', unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#0070F2; margin-top:0;'>💎 Logon</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#556B82; font-size: 14px; margin-bottom: 25px;'>Gerador VIP Lotofácil</p>", unsafe_allow_html=True)
+    
+    # st.form habilita o botão "Enter" do teclado nativamente
+    with st.form("login_form"):
+        usuario = st.text_input("Usuário", value="consultor.sd", placeholder="Digite seu usuário")
+        senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+        st.caption("Idioma")
+        st.selectbox("", ["PT - Português", "EN - English", "ES - Español"], label_visibility="collapsed")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("Logon", use_container_width=True, type="secondary")
+        
+        if submitted:
+            if senha == "abap123":
+                st.session_state["logged_in"] = True
+                st.rerun()
+            else:
+                st.error("Falha na autenticação.")
+                
+    st.markdown("<p style='text-align:center; font-size:12px; color:#0070F2; margin-top:15px; cursor:pointer;'>Modificar senha / Ajuda</p>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # ==========================================
-# 5. O APLICATIVO (Layout Analítico Estruturado)
+# 6. O APLICATIVO (Layout Analítico Estruturado)
 # ==========================================
 
 st.markdown("""
@@ -283,7 +303,7 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
 st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
 # ==========================================
-# DIVISÃO DA TELA E O SIMULADOR
+# DIVISÃO DA TELA E O SIMULADOR BLINDADO
 # ==========================================
 if df is not None:
     col_esq, col_dir = st.columns([1.2, 1], gap="large")
@@ -320,45 +340,42 @@ if df is not None:
             st.markdown('<div class="simulador-header">EU TERIA GANHO ALGUM PRÊMIO?</div>', unsafe_allow_html=True)
             
             with st.container(border=True):
-                # --- QUADRO 1 (A GRADE MÁGICA DE JS) ---
-                # Criamos um marcador para o JS encontrar este bloco
-                st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
-                
-                # LISTAMOS OS BOTÕES SEM COLUNAS! O JS vai transformar isso numa grade perfeita.
-                for num in range(1, 26):
-                    selecionada = num in st.session_state["palpite_manual"]
-                    tipo_btn = "primary" if selecionada else "secondary"
-                    st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
-                
-                # O SCRIPT DE INJEÇÃO
-                components.html("""
-                    <script>
-                        // Esconde a sujeira invisível do componente
-                        const iframe = window.frameElement;
-                        if(iframe){
-                            const iframeContainer = iframe.closest('.element-container');
-                            if(iframeContainer) iframeContainer.style.display = 'none';
-                        }
-                        
-                        // Captura o bloco dos botões e aplica a classe de CSS Grid
-                        const marker = window.parent.document.getElementById('marker-volante');
-                        if(marker){
-                            const markerContainer = marker.closest('.element-container');
-                            if(markerContainer) markerContainer.style.display = 'none';
-                            
-                            const verticalBlock = marker.closest('div[data-testid="stVerticalBlock"]');
-                            if(verticalBlock) {
-                                verticalBlock.classList.add('volante-grid-perfect');
+                # --- A CAIXA-FORTE DAS BOLINHAS (O JS SÓ AGE AQUI) ---
+                with st.container():
+                    st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
+                    
+                    for num in range(1, 26):
+                        selecionada = num in st.session_state["palpite_manual"]
+                        tipo_btn = "primary" if selecionada else "secondary"
+                        st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
+                    
+                    # O SCRIPT DE INJEÇÃO QUE OBRIGA AS BOLINHAS A VIRAREM GRID
+                    components.html("""
+                        <script>
+                            const iframe = window.frameElement;
+                            if(iframe){
+                                const iframeContainer = iframe.closest('.element-container');
+                                if(iframeContainer) iframeContainer.style.display = 'none';
                             }
-                        }
-                    </script>
-                """, height=0, width=0)
+                            
+                            // Acha EXATAMENTE o container isolado das bolinhas e protege ele
+                            const marker = window.parent.document.getElementById('marker-volante');
+                            if(marker){
+                                const markerContainer = marker.closest('.element-container');
+                                if(markerContainer) markerContainer.style.display = 'none';
+                                
+                                const verticalBlock = marker.closest('div[data-testid="stVerticalBlock"]');
+                                if(verticalBlock) {
+                                    verticalBlock.classList.add('volante-grid-perfect');
+                                }
+                            }
+                        </script>
+                    """, height=0, width=0)
                 
-                # --- QUADRO 2 (TEXTO DE SELEÇÃO) ---
+                # --- BOTÕES DE AÇÃO E TEXTO (BLINDADOS DO LADO DE FORA DA CAIXA-FORTE) ---
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
                 st.markdown(f"<p style='text-align:center; font-size:13px; color:#6A6D70; padding-top: 15px; border-top: 1px solid #E0E0E0;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
-                # --- QUADRO 3 (BOTÕES DE AÇÃO) ---
                 c_btn1, c_btn2 = st.columns(2)
                 with c_btn1: verificar = st.button("Verificar Histórico", use_container_width=True, type="primary")
                 with c_btn2: validar_listas = st.button("Validar nas Listas", use_container_width=True)
