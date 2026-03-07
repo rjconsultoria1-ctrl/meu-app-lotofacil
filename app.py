@@ -275,7 +275,6 @@ def motor_teoria_dos_grafos(df_dados, n_dezenas):
     past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
     ultimo_sorteio = past_draws[-1]
     
-    # Passo 1: Construir a Matriz de Adjacência (Força de Amizade entre Dezenas)
     matriz_afinidade = [[0] * 26 for _ in range(26)]
     for draw in past_draws:
         lst = list(draw)
@@ -284,12 +283,9 @@ def motor_teoria_dos_grafos(df_dados, n_dezenas):
                 matriz_afinidade[lst[i]][lst[j]] += 1
                 matriz_afinidade[lst[j]][lst[i]] += 1
                 
-    if n_dezenas == 15:
-        imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
-    elif n_dezenas == 16:
-        imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
-    else:
-        imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
+    if n_dezenas == 15: imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
+    elif n_dezenas == 16: imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
+    else: imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
 
     primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
     moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
@@ -297,24 +293,17 @@ def motor_teoria_dos_grafos(df_dados, n_dezenas):
 
     lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
     
-    # Passo 2: O Filtro de Monte Carlo Rápido
     for comb in itertools.combinations(range(1, 26), n_dezenas):
         f_comb = frozenset(comb)
-        
-        # Fast-Fail: Abandona logo se não tiver a proporção certa de ímpares para economizar processamento
         impares = sum(1 for d in f_comb if d % 2 != 0)
+        
         if impares not in imp_d:
-            if random.random() > 0.05: # Permite que apenas 5% dos "fora do padrão" passem para o ranking Geral
-                continue
+            if random.random() > 0.05: continue
                 
         qtd_primos = sum(1 for d in f_comb if d in primos)
         eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
         
-        # Passo 3: O Coração do Grafo (Calcula a coesão da panelinha)
-        score_grafo = 0
-        for i in range(n_dezenas):
-            for j in range(i+1, n_dezenas):
-                score_grafo += matriz_afinidade[comb[i]][comb[j]]
+        score_grafo = sum(matriz_afinidade[comb[i]][comb[j]] for i in range(n_dezenas) for j in range(i+1, n_dezenas))
         
         qtd_moldura = sum(1 for d in f_comb if d in moldura)
         qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
@@ -324,25 +313,109 @@ def motor_teoria_dos_grafos(df_dados, n_dezenas):
         if eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1]):
             lista_diamante.append((score_grafo, list(comb)))
             
-        if eh_valido_basico:
-            lista_frias.append((score_grafo, list(comb)))
-
+        if eh_valido_basico: lista_frias.append((score_grafo, list(comb)))
         lista_geral.append((score_grafo, list(comb)))
 
         alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
         if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
             lista_reversa.append((score_grafo, list(comb)))
 
-    # Passo 4: O Julgamento Final (Ordenação por Afinidade)
-    lista_diamante.sort(key=lambda x: x[0], reverse=True) # Maior Coesão (Panelinha Ouro)
-    lista_geral.sort(key=lambda x: x[0], reverse=True)    # Maior Coesão Geral
-    lista_reversa.sort(key=lambda x: x[0], reverse=True)  # Maior Coesão
-    lista_frias.sort(key=lambda x: x[0], reverse=False)   # Menor Coesão (Os ANTAGONISTAS)
+    lista_diamante.sort(key=lambda x: x[0], reverse=True)
+    lista_geral.sort(key=lambda x: x[0], reverse=True) 
+    lista_reversa.sort(key=lambda x: x[0], reverse=True)  
+    lista_frias.sort(key=lambda x: x[0], reverse=False)
 
-    def formatar(lista):
-        # A pontuação é dividida por 10 para criar um índice estético legal na tela
-        return [{"Sel": False, "Rank": r, "Pts": round(s / 10.0, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+    def formatar(lista): return [{"Sel": False, "Rank": r, "Pts": round(s / 10.0, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
+    return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
+
+# ------------------------------------------
+# MOTOR 3: CADEIAS DE MARKOV (INÉRCIA)
+# ------------------------------------------
+@st.cache_data(show_spinner=False)
+def motor_cadeias_markov(df_dados, n_dezenas):
+    dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
+    if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
+    
+    past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
+    ultimo_sorteio = past_draws[-1]
+    
+    # Passo 1: Construir a Matriz de Transição de Probabilidades para cada Dezena
+    prob_markov = {} # Nota da dezena para o PRÓXIMO sorteio
+    
+    for num in range(1, 26):
+        # Transforma o histórico inteiro em [0, 1, 1, 0, 0, 1...] para essa dezena específica
+        hist_num = [1 if num in draw else 0 for draw in past_draws]
+        
+        t_1_1 = 0 # Saiu e repetiu (Inércia)
+        t_1_0 = 0 # Saiu e falhou
+        t_0_1 = 0 # Falhou e recuperou
+        t_0_0 = 0 # Falhou e continuou falhando
+        
+        for i in range(len(hist_num) - 1):
+            if hist_num[i] == 1 and hist_num[i+1] == 1: t_1_1 += 1
+            elif hist_num[i] == 1 and hist_num[i+1] == 0: t_1_0 += 1
+            elif hist_num[i] == 0 and hist_num[i+1] == 1: t_0_1 += 1
+            elif hist_num[i] == 0 and hist_num[i+1] == 0: t_0_0 += 1
+            
+        total_1 = t_1_1 + t_1_0
+        total_0 = t_0_1 + t_0_0
+        
+        p_1_to_1 = (t_1_1 / total_1) if total_1 > 0 else 0
+        p_0_to_1 = (t_0_1 / total_0) if total_0 > 0 else 0
+        
+        # Passo 2: Define a força da dezena baseado estritamente no último concurso
+        if num in ultimo_sorteio:
+            prob_markov[num] = p_1_to_1 * 100 # Multiplicado para virar Pontuação Visual
+        else:
+            prob_markov[num] = p_0_to_1 * 100
+
+    if n_dezenas == 15: imp_d = [7, 8]; pri_d = [4, 5, 6]; mol_d = [9, 10, 11]; fib_d = [3, 4, 5]; soma_d = [180, 210]
+    elif n_dezenas == 16: imp_d = [8, 9]; pri_d = [5, 6, 7]; mol_d = [10, 11]; fib_d = [4, 5]; soma_d = [195, 220]
+    else: imp_d = [8, 9, 10]; pri_d = [5, 6, 7, 8]; mol_d = [11, 12, 13]; fib_d = [4, 5, 6]; soma_d = [210, 250]
+
+    primos = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+    moldura = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
+    fibonacci = {1, 2, 3, 5, 8, 13, 21}
+
+    lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
+    
+    # Passo 3: O Filtro de Monte Carlo e Soma de Probabilidades
+    for comb in itertools.combinations(range(1, 26), n_dezenas):
+        f_comb = frozenset(comb)
+        impares = sum(1 for d in f_comb if d % 2 != 0)
+        
+        if impares not in imp_d:
+            if random.random() > 0.05: continue
+                
+        qtd_primos = sum(1 for d in f_comb if d in primos)
+        eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
+        
+        # A Pontuação Pts agora reflete a Chance % Matemática dessa combinação acontecer no Próximo Sorteio
+        score_markov = sum(prob_markov[d] for d in f_comb)
+        
+        qtd_moldura = sum(1 for d in f_comb if d in moldura)
+        qtd_fibo = sum(1 for d in f_comb if d in fibonacci)
+        soma_total = sum(f_comb)
+        repetidas_do_ultimo = len(f_comb.intersection(ultimo_sorteio))
+
+        if eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1]):
+            lista_diamante.append((score_markov, list(comb)))
+            
+        if eh_valido_basico: lista_frias.append((score_markov, list(comb)))
+        lista_geral.append((score_markov, list(comb)))
+
+        alvo_repetidas = 9 if n_dezenas == 15 else (10 if n_dezenas == 16 else 11)
+        if repetidas_do_ultimo in [alvo_repetidas, alvo_repetidas+1]:
+            lista_reversa.append((score_markov, list(comb)))
+
+    # Passo 4: O Julgamento de Markov
+    lista_diamante.sort(key=lambda x: x[0], reverse=True) # Maior chance de ocorrer agora
+    lista_geral.sort(key=lambda x: x[0], reverse=True) 
+    lista_reversa.sort(key=lambda x: x[0], reverse=True)  
+    lista_frias.sort(key=lambda x: x[0], reverse=False) # Menor chance de ocorrer (Combinações Frias de Inércia)
+
+    def formatar(lista): return [{"Sel": False, "Rank": r, "Pts": round(s, 2), **{f"B{i+1}": f"{d:02d}" for i, d in enumerate(c)}} for r, (s, c) in enumerate(lista, 1)]
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
 
@@ -358,6 +431,8 @@ def roteador_matematico(df_dados, n_dezenas, motor_selecionado):
         return motor_frequencia_classica(df_dados, n_dezenas)
     elif "2." in motor_selecionado:
         return motor_teoria_dos_grafos(df_dados, n_dezenas)
+    elif "3." in motor_selecionado:
+        return motor_cadeias_markov(df_dados, n_dezenas)
     else:
         vazio = formatar_vazio(n_dezenas)
         return vazio, vazio, vazio, vazio
@@ -410,8 +485,9 @@ if df is not None:
                     dia, fri, ger, rev = roteador_matematico(df, N_DEZENAS, MOTOR_ESCOLHIDO)
                     
                     if dia.empty:
-                        st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento. Volte para a opção 1 ou 2 por enquanto.")
+                        st.warning(f"O motor '{MOTOR_ESCOLHIDO}' está em desenvolvimento.")
                     
+                    # O "Mecanismo de Segurança" (Iceberg Sampling) atua aqui
                     st.session_state["df_diamante"] = dia.head(100).sample(min(10, len(dia))).sort_values("Rank") if not dia.empty else dia
                     st.session_state["df_reversa"] = rev.head(100).sample(min(10, len(rev))).sort_values("Rank") if not rev.empty else rev
                     st.session_state["df_frias"] = fri.head(1000).sample(min(50, len(fri))).sort_values("Rank") if not fri.empty else fri
