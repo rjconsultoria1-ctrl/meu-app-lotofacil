@@ -12,249 +12,185 @@ import heapq
 from datetime import datetime
 
 # ==========================================
-# 1. TRATAMENTO DO BOTÃO SAIR E CONFIG
+# 1. CONFIGURAÇÃO E TRATAMENTO DE LOGIN
 # ==========================================
-try:
-    params = st.query_params
-    if "logout" in params:
-        st.session_state["logged_in"] = False
-        st.query_params.clear()
-        st.rerun()
-except AttributeError:
-    params = st.experimental_get_query_params()
-    if "logout" in params:
-        st.session_state["logged_in"] = False
-        st.experimental_set_query_params()
-        st.rerun()
-
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
-
-# ==========================================
-# 2. CACHE INTELIGENTE (ANTI-TELA BRANCA)
-# ==========================================
-@st.cache_data(show_spinner=False)
-def carregar_dados_cache(caminho):
-    if os.path.exists(caminho):
-        return pd.read_csv(caminho, sep=";")
-    return pd.DataFrame()
-
-def contar_progresso_real(pasta):
-    if not os.path.exists(pasta): return 0
-    return len([f for f in os.listdir(pasta) if f.endswith("_meta.txt")])
-
-# ==========================================
-# 3. CSS GLOBAL E ESTILIZAÇÃO FIORI
-# ==========================================
-st.markdown("""
-    <style>
-        [data-testid="collapsedControl"] { display: none; }
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        [data-testid="stHeader"] {display: none;}
-        
-        .block-container { padding-top: 0rem !important; padding-bottom: 2rem; max-width: 95% !important; padding-left: 1rem; padding-right: 1rem; }
-        
-        .fiori-header-bar { background-color: #354A5F; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-family: Arial, sans-serif; position: fixed; top: 0; left: 0; width: 100vw; z-index: 9999; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
-        .header-left { display: flex; align-items: center; font-size: 15px; }
-        .header-right { display: flex; align-items: center; gap: 20px; font-size: 15px; }
-        .btn-sair-link { color: white !important; text-decoration: none !important; font-weight: bold; border: 1px solid rgba(255,255,255,0.5); padding: 5px 16px; border-radius: 4px; font-size: 13px; cursor: pointer; transition: 0.2s; }
-        .btn-sair-link:hover { background-color: rgba(255,255,255,0.2); border-color: white; }
-        .header-spacer { margin-top: 55px; }
-        
-        .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
-        .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
-        
-        .simulador-header { background-color: #5C2D91; color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 14px; border-radius: 8px 8px 0 0; margin-bottom: -15px; position: relative; z-index: 10; }
-        .simulador-card-style { border-radius: 0 0 8px 8px !important; border: 1px solid #E0E0E0 !important; border-top: none !important; background-color: white !important; padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important; }
-
-        .volante-grid-perfect { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 12px !important; justify-content: center !important; justify-items: center !important; max-width: 320px !important; margin: 0 auto !important; padding: 10px 0 !important; }
-        .volante-grid-perfect .element-container button { border-radius: 50% !important; height: 44px !important; width: 44px !important; padding: 0 !important; font-size: 15px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; align-items: center !important; box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s !important; margin: 0 !important; }
-        .volante-grid-perfect .element-container button[kind="secondary"] { background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important; }
-        .volante-grid-perfect .element-container button[kind="primary"] { background-color: #5C2D91 !important; color: white !important; border: none !important; }
-        
-        .card-resultado { background-color: white; border: 1px solid #E0E0E0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%; margin-bottom: 10px; }
-        .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
-        .card-resultado-body { padding: 15px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; justify-items: center; }
-        .bolinha-roxa { background-color: #5C2D91; color: white; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 13px; }
-        
-        .faixa-resultados { background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333; margin-top: 30px; margin-bottom: 15px; border-radius: 4px; }
-    </style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 4. LÓGICA DE NEGÓCIO E MOTORES
-# ==========================================
-ARQUIVO_BASE = "banco_dados.csv"
-ARQUIVO_PERFORMANCE = "performance_motores.csv"
-PASTA_CACHE = "memoria_calculos"
 
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
 if "df_diamante" not in st.session_state:
     for k in ["df_diamante", "df_frias", "df_geral", "df_reversa"]: st.session_state[k] = pd.DataFrame()
 
-def toggle_dezena(dezena):
-    if dezena in st.session_state["palpite_manual"]: st.session_state["palpite_manual"].remove(dezena)
-    elif len(st.session_state["palpite_manual"]) < 15: st.session_state["palpite_manual"].add(dezena)
+# ==========================================
+# 2. CSS MASTER (LAYOUT FIORI BLINDADO)
+# ==========================================
+st.markdown("""
+    <style>
+        [data-testid="collapsedControl"] { display: none; }
+        .block-container { padding-top: 0rem !important; max-width: 98% !important; }
+        
+        /* Header SAP */
+        .fiori-header { background-color: #354A5F; color: white; padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-family: 'Arial', sans-serif; }
+        .header-spacer { margin-top: 70px; }
+        
+        /* Rankings Estilizados */
+        .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+        .stTabs [data-baseweb="tab"] { background-color: #f0f2f6; border-radius: 4px 4px 0 0; padding: 8px 16px; }
+        .stTabs [aria-selected="true"] { background-color: #5C2D91 !important; color: white !important; }
 
-def limpar_volante(): st.session_state["palpite_manual"] = set()
+        /* Volante em Grid */
+        .volante-grid-wrapper { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; max-width: 320px; margin: 0 auto; padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+        
+        /* Bolinhas de Resultado */
+        .res-container { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 10px; }
+        .bolinha-sap { background: #5C2D91; color: white; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
+        /* Título Simulador */
+        .sim-title { background: #5C2D91; color: white; text-align: center; padding: 10px; font-weight: bold; border-radius: 8px 8px 0 0; margin-bottom: -1px; }
+    </style>
+""", unsafe_allow_html=True)
 
-def executar_logica_motora(df_dados, n_dezenas, motor_id):
-    dezenas_cols = [col for col in df_dados.columns if "Dezena" in col]
-    if not dezenas_cols: dezenas_cols = df_dados.columns[-15:]
+# ==========================================
+# 3. OS 5 MOTORES MATEMÁTICOS (O CÉREBRO)
+# ==========================================
+ARQUIVO_BASE = "banco_dados.csv"
+PASTA_CACHE = "memoria_calculos"
+
+def executar_logica_completa(df_dados, n_dezenas, motor_id):
+    """A inteligência real que você solicitou."""
+    dezenas_cols = [c for c in df_dados.columns if "Dezena" in c] or df_dados.columns[-15:]
     past_draws = [frozenset(row) for row in df_dados[dezenas_cols].dropna().astype(int).values]
     ultimo_sorteio = past_draws[-1]
-    total_draws = len(past_draws)
     
-    # Filtros Matemáticos Padrão SAP
+    # Filtros SAP
     primos, moldura, fibonacci = {2,3,5,7,11,13,17,19,23}, {1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25}, {1,2,3,5,8,13,21}
-    LIMIT = 5000
     h_diamante, h_frias, h_geral, h_reversa = [], [], [], []
 
-    # Setup Específico do Motor
+    # Pre-cálculos por Motor
     counts = Counter([n for d in past_draws for n in d])
-    if motor_id == 2:
+    if motor_id == 2: # Grafos
         matriz = [[0]*26 for _ in range(26)]
         for d in past_draws:
             l = list(d)
-            for i in range(len(l)):
-                for j in range(i+1, len(l)): matriz[l[i]][l[j]] += 1; matriz[l[j]][l[i]] += 1
-    elif motor_id == 3:
+            for i, j in itertools.combinations(l, 2): matriz[i][j] += 1; matriz[j][i] += 1
+    elif motor_id == 3: # Markov
         prob_m = {}
         for n in range(1,26):
             h = [1 if n in d else 0 for d in past_draws]
             t11 = sum(1 for i in range(len(h)-1) if h[i]==1 and h[i+1]==1)
             t01 = sum(1 for i in range(len(h)-1) if h[i]==0 and h[i+1]==1)
             prob_m[n] = (t11/h.count(1)*100) if (n in ultimo_sorteio and h.count(1)>0) else (t01/h.count(0)*100 if h.count(0)>0 else 0)
-    elif motor_id == 4:
-        probs = {d: counts.get(d, 0)/total_draws for d in range(1,26)}
-        def calc_ent(c): return -sum(probs[d]*math.log2(probs[d]) for d in c if probs.get(d,0)>0)
-        ent_ideal = sum(calc_ent(d) for d in past_draws)/total_draws
-    elif motor_id == 5:
+    elif motor_id == 4: # Entropia
+        total = len(past_draws)
+        probs = {d: counts.get(d, 0)/total for d in range(1,26)}
+        def ent(c): return -sum(probs[d]*math.log2(probs[d]) for d in c if probs.get(d,0)>0)
+        ent_ideal = sum(ent(d) for d in past_draws)/total
+    elif motor_id == 5: # Genético
         recentes = past_draws[-30:]
 
-    # Loop de Simulação
-    for idx, comb in enumerate(itertools.combinations(range(1, 26), n_dezenas)):
-        if idx > 1000000: break # Break de segurança
+    # Simulação de Alta Performance (Amostragem Inteligente)
+    for _ in range(15000): 
+        comb = tuple(sorted(random.sample(range(1, 26), n_dezenas)))
         f_comb = frozenset(comb)
         
-        # Filtros
+        # Filtros Básicos
         impares = sum(1 for d in f_comb if d % 2 != 0)
-        qtd_primos = sum(1 for d in f_comb if d in primos)
-        soma = sum(f_comb)
+        q_primos = sum(1 for d in f_comb if d in primos)
         repetidas = len(f_comb.intersection(ultimo_sorteio))
         
-        # Scoring por Motor
-        if motor_id == 1: score = sum(counts[d] for d in f_comb) / 100
-        elif motor_id == 2: score = sum(matriz[comb[i]][comb[j]] for i in range(n_dezenas) for j in range(i+1, n_dezenas)) / 10
-        elif motor_id == 3: score = sum(prob_m[d] for d in f_comb)
-        elif motor_id == 4: score = 100 - abs(calc_ent(f_comb) - ent_ideal)*50
-        elif motor_id == 5: 
-            score = sum((len(f_comb.intersection(p))-10)**3 for p in recentes if len(f_comb.intersection(p))>=11)
-
-        # Categorização
-        entry = (score, comb)
-        if 7 <= impares <= 9 and 4 <= qtd_primos <= 7 and 170 <= soma <= 220:
-            if len(h_diamante) < 500: heapq.heappush(h_diamante, entry)
-            elif score > h_diamante[0][0]: heapq.heappushpop(h_diamante, entry)
+        # Cálculo de Score por Motor
+        if motor_id == 1: sc = sum(counts[d] for d in f_comb) / 100
+        elif motor_id == 2: sc = sum(matriz[comb[i]][comb[j]] for i, j in itertools.combinations(range(n_dezenas), 2)) / 10
+        elif motor_id == 3: sc = sum(prob_m.get(d, 0) for d in f_comb)
+        elif motor_id == 4: sc = 100 - abs(ent(f_comb) - ent_ideal)*60
+        elif motor_id == 5: sc = sum((len(f_comb.intersection(p))-10)**3 for p in recentes if len(f_comb.intersection(p))>=11)
         
+        entry = (sc, comb)
+        # Ranking Diamante (Filtros Estritos)
+        if 7 <= impares <= 9 and 4 <= q_primos <= 7:
+            if len(h_diamante) < 500: heapq.heappush(h_diamante, entry)
+            elif sc > h_diamante[0][0]: heapq.heappushpop(h_diamante, entry)
+        
+        # Outros Rankings
         if len(h_geral) < 500: heapq.heappush(h_geral, entry)
-        elif score > h_geral[0][0]: heapq.heappushpop(h_geral, entry)
+        elif sc > h_geral[0][0]: heapq.heappushpop(h_geral, entry)
         
         if repetidas in [8, 9, 10]:
             if len(h_reversa) < 500: heapq.heappush(h_reversa, entry)
-            elif score > h_reversa[0][0]: heapq.heappushpop(h_reversa, entry)
+            elif sc > h_reversa[0][0]: heapq.heappushpop(h_reversa, entry)
 
-        if len(h_frias) < 500: heapq.heappush(h_frias, (-score, comb))
-        elif -score > h_frias[0][0]: heapq.heappushpop(h_frias, (-score, comb))
+        if len(h_frias) < 500: heapq.heappush(h_frias, (-sc, comb))
+        elif -sc > h_frias[0][0]: heapq.heappushpop(h_frias, (-sc, comb))
 
-    # Formatação Final
-    def fmt(h, inv=False):
+    def formatar(h):
         l = sorted(h, key=lambda x: x[0], reverse=True)
         return pd.DataFrame([{"Sel":False, "Rank":i+1, "Pts":round(abs(s),2), **{f"B{j+1}":f"{d:02d}" for j,d in enumerate(c)}} for i,(s,c) in enumerate(l)])
     
-    return fmt(h_diamante), fmt(h_frias, True), fmt(h_geral), fmt(h_reversa)
-
-def worker_fantasma(df, tamanho):
-    if not os.path.exists(PASTA_CACHE): os.makedirs(PASTA_CACHE)
-    for mid in [1, 2, 3, 4, 5]:
-        for n in [15, 16, 17]:
-            pref = f"{PASTA_CACHE}/M{mid}_{n}"
-            if not os.path.exists(f"{pref}_meta.txt"):
-                d, f, g, r = executar_logica_motora(df, n, mid)
-                d.to_csv(f"{pref}_dia.csv", sep=";", index=False)
-                f.to_csv(f"{pref}_fri.csv", sep=";", index=False)
-                g.to_csv(f"{pref}_ger.csv", sep=";", index=False)
-                r.to_csv(f"{pref}_rev.csv", sep=";", index=False)
-                with open(f"{pref}_meta.txt", "w") as m: m.write(str(tamanho))
+    return formatar(h_diamante), formatar(h_frias), formatar(h_geral), formatar(h_reversa)
 
 # ==========================================
-# 5. INTERFACE (UI)
+# 4. INTERFACE E VOLANTE FIORI
 # ==========================================
-if not st.session_state.get("logged_in"):
-    with st.form("login"):
-        st.title("💎 Gerador VIP Logon")
-        u = st.text_input("Usuário", value="consultor.sd")
-        p = st.text_input("Senha", type="password")
-        if st.form_submit_button("Entrar") and p == "abap123":
-            st.session_state["logged_in"] = True
-            st.rerun()
+if not st.session_state["logged_in"]:
+    col1, col2, col3 = st.columns([1,1,1])
+    with col2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        with st.form("login"):
+            st.title("💎 Logon")
+            p = st.text_input("Senha", type="password")
+            if st.form_submit_button("Acessar") and p == "abap123":
+                st.session_state["logged_in"] = True
+                st.rerun()
     st.stop()
 
-st.markdown("""<div class="fiori-header-bar"><div class="header-left"><b>💎 Gerador VIP</b> | SAP Laboratory</div><div class="header-right"><a href="/?logout=true" target="_self" class="btn-sair-link">Sair</a></div></div><div class="header-spacer"></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="fiori-header"><div><b>💎 Gerador VIP</b> | SAP Laboratory v5.0</div><div><a href="/?logout=true" style="color:white;text-decoration:none;">Sair</a></div></div><div class="header-spacer"></div>""", unsafe_allow_html=True)
 
-df = carregar_dados_cache(ARQUIVO_BASE)
-if not df.empty:
-    # Radar
-    total_concluido = contar_progresso_real(PASTA_CACHE)
-    st.progress(total_concluido/15, text=f"📡 Radar de Memória: {total_concluido}/15 concluídos")
+if os.path.exists(ARQUIVO_BASE):
+    df = pd.read_csv(ARQUIVO_BASE, sep=";")
     
-    col_esq, col_dir = st.columns([1.2, 1], gap="large")
+    col_rank, col_vol = st.columns([1.6, 1], gap="medium")
     
-    with col_esq:
-        c1, c2, c3 = st.columns([1, 2, 1])
-        n_dez = c1.radio("Dezenas:", [15, 16, 17], horizontal=True)
-        motor_txt = c2.selectbox("Motor:", ["1. Frequência", "2. Grafos", "3. Markov", "4. Entropia", "5. Genético"])
-        if c3.button("▶ Gerar", use_container_width=True):
-            mid = int(motor_txt[0])
-            pref = f"{PASTA_CACHE}/M{mid}_{n_dez}"
-            if os.path.exists(f"{pref}_meta.txt"):
-                st.session_state["df_diamante"] = pd.read_csv(f"{pref}_dia.csv", sep=";")
-                st.session_state["df_frias"] = pd.read_csv(f"{pref}_fri.csv", sep=";")
-                st.session_state["df_geral"] = pd.read_csv(f"{pref}_ger.csv", sep=";")
-                st.session_state["df_reversa"] = pd.read_csv(f"{pref}_rev.csv", sep=";")
-            else:
-                d, f, g, r = executar_logica_motora(df, n_dez, mid)
+    with col_rank:
+        c1, c2, c3 = st.columns([1, 2, 1.2])
+        n_dez = c1.selectbox("Dezenas", [15, 16, 17])
+        mot_txt = c2.selectbox("Estratégia Matemática", ["1. Frequência Clássica", "2. Teoria dos Grafos", "3. Cadeias de Markov", "4. Entropia de Shannon", "5. Algoritmo Genético"])
+        
+        if c3.button("▶ CALCULAR MOTORES", use_container_width=True):
+            with st.spinner("Processando algoritmos..."):
+                mid = int(mot_txt[0])
+                d, f, g, r = executar_logica_completa(df, n_dez, mid)
                 st.session_state["df_diamante"], st.session_state["df_frias"] = d, f
                 st.session_state["df_geral"], st.session_state["df_reversa"] = g, r
-            
-            threading.Thread(target=worker_fantasma, args=(df.copy(), len(df)), daemon=True).start()
-            st.rerun()
-
+        
         tabs = st.tabs(["💎 Diamante", "❄️ Frias", "🔥 Geral", "🔄 Reversa"])
-        for i, t in enumerate(tabs):
+        for i, tab in enumerate(tabs):
             key = ["df_diamante", "df_frias", "df_geral", "df_reversa"][i]
-            with t: st.data_editor(st.session_state[key], hide_index=True, use_container_width=True, key=f"editor_{key}")
+            with tab: st.dataframe(st.session_state[key], hide_index=True, use_container_width=True)
 
-    with col_dir:
-        st.markdown('<div class="simulador-header">SIMULADOR DE VOLANTE</div>', unsafe_allow_html=True)
+    with col_vol:
+        st.markdown('<div class="sim-title">SIMULADOR DE JOGO</div>', unsafe_allow_html=True)
         with st.container(border=True):
-            st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
+            # Construção do Volante Manual
+            v_cols = st.columns(5)
             for i in range(1, 26):
-                tipo = "primary" if i in st.session_state["palpite_manual"] else "secondary"
-                st.button(f"{i:02d}", key=f"v_{i}", type=tipo, on_click=toggle_dezena, args=(i,))
+                with v_cols[(i-1)%5]:
+                    sel = i in st.session_state["palpite_manual"]
+                    if st.button(f"{i:02d}", key=f"btn_{i}", type="primary" if sel else "secondary", use_container_width=True):
+                        if i in st.session_state["palpite_manual"]: st.session_state["palpite_manual"].remove(i)
+                        elif len(st.session_state["palpite_manual"]) < 15: st.session_state["palpite_manual"].add(i)
+                        st.rerun()
             
-            st.markdown(f"<p style='text-align:center'>Selecionadas: {len(st.session_state['palpite_manual'])}/15</p>", unsafe_allow_html=True)
-            if st.button("Limpar Volante", use_container_width=True): limpar_volante(); st.rerun()
+            st.markdown(f"<h4 style='text-align:center'>Marcadas: {len(st.session_state['palpite_manual'])}/15</h4>", unsafe_allow_html=True)
+            if st.button("🗑️ Limpar", use_container_width=True):
+                st.session_state["palpite_manual"] = set()
+                st.rerun()
 
-    # Rodapé com últimos resultados
-    st.markdown('<div class="faixa-resultados">Últimos Resultados</div>', unsafe_allow_html=True)
+    # Histórico no Rodapé
+    st.markdown('<div class="faixa-resultados">Últimos Concursos Gravados</div>', unsafe_allow_html=True)
+    u_cols = st.columns(3)
     ultimos = df.tail(3).iloc[::-1]
-    cols_rodape = st.columns(3)
     for i, (idx, row) in enumerate(ultimos.iterrows()):
-        dzs = "".join([f'<div class="bolinha-roxa">{int(n):02d}</div>' for n in row[-15:]])
-        cols_rodape[i].markdown(f'<div class="card-resultado"><div class="card-resultado-header">Sorteio {idx}</div><div class="card-resultado-body">{dzs}</div></div>', unsafe_allow_html=True)
-
-# Injeção para o Grid do Volante
-components.html("<script>const g=window.parent.document.getElementById('marker-volante');if(g){const p=g.closest('.element-container').parentNode;p.classList.add('volante-grid-perfect');}</script>", height=0)
+        with u_cols[i]:
+            dzs = "".join([f'<div class="bolinha-sap">{int(n):02d}</div>' for n in row[-15:]])
+            st.markdown(f"""<div style="border:1px solid #ddd; border-radius:8px; padding:10px; background:#f9f9f9;">
+                <small>Concurso: {idx}</small><div class="res-container">{dzs}</div></div>""", unsafe_allow_html=True)
