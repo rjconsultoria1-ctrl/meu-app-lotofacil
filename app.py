@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from collections import Counter
 import itertools
@@ -63,49 +64,50 @@ st.markdown("""
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
 
-        /* --- INTEGRAÇÃO DO HEADER ROXO COM O CONTAINER DO SIMULADOR --- */
+        /* --- INTEGRAÇÃO DO HEADER ROXO --- */
         .simulador-header {
             background-color: #5C2D91; color: white; padding: 12px;
             font-weight: bold; text-align: center; font-size: 14px;
             border-radius: 8px 8px 0 0; margin-bottom: -15px; position: relative; z-index: 10;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            border-radius: 0 0 8px 8px !important;
-            border: 1px solid #E0E0E0 !important;
-            border-top: none !important;
-            background-color: white !important;
-            padding-top: 20px !important;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+            border-radius: 0 0 8px 8px !important; border: 1px solid #E0E0E0 !important;
+            border-top: none !important; background-color: white !important;
+            padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
         }
 
-        /* --- REGRA UNIVERSAL DAS 5 BOLINHAS DO VOLANTE --- */
-        /* Seleciona apenas botões que estão em linhas divididas exatamente em 5 colunas */
-        div[data-testid="column"]:first-child:nth-last-child(5) button,
-        div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button {
-            border-radius: 50% !important;
-            height: 42px !important; width: 42px !important;
-            padding: 0 !important; font-size: 15px !important; font-weight: bold !important;
-            margin: 5px auto !important; display: flex !important; justify-content: center !important; align-items: center !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s;
+        /* --- A MÁGICA DA GRADE (JS HACK) --- */
+        /* Esta classe será injetada via JS apenas no bloco do volante */
+        .volante-grid-perfect {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 12px !important;
+            justify-content: center !important;
+            justify-items: center !important;
+            max-width: 320px !important;
+            margin: 0 auto !important; /* Centraliza a grade no container */
+            padding: 10px 0 !important;
         }
-        /* Bolinha Desmarcada (Branca, texto roxo, borda roxa) */
-        div[data-testid="column"]:first-child:nth-last-child(5) button[kind="secondary"],
-        div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="secondary"] {
+        
+        /* O visual perfeito das bolinhas */
+        .volante-grid-perfect .element-container button {
+            border-radius: 50% !important;
+            height: 44px !important; width: 44px !important;
+            padding: 0 !important; font-size: 15px !important; font-weight: bold !important;
+            display: flex !important; justify-content: center !important; align-items: center !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s !important;
+            margin: 0 !important;
+        }
+        
+        /* Cores das bolinhas do simulador */
+        .volante-grid-perfect .element-container button[kind="secondary"] {
             background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
         }
-        /* Bolinha Marcada (Fundo roxo, texto branco) */
-        div[data-testid="column"]:first-child:nth-last-child(5) button[kind="primary"],
-        div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="primary"] {
+        .volante-grid-perfect .element-container button[kind="primary"] {
             background-color: #5C2D91 !important; color: white !important; border: none !important;
         }
 
-        /* Mantém as colunas 5x5 equilibradas */
-        div[data-testid="column"]:first-child:nth-last-child(5),
-        div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
-            min-width: 15% !important; flex: 1 1 15% !important; padding: 2px !important;
-        }
-
-        /* --- BOTÕES DE AÇÃO --- */
+        /* --- BOTÕES DOS QUADROS DE AÇÃO --- */
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
@@ -113,7 +115,7 @@ st.markdown("""
         /* --- CARDS DE RESULTADOS (O Visual Aprovado) --- */
         .faixa-resultados { background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333; margin-top: 30px; margin-bottom: 15px; border-radius: 4px; }
         .card-resultado { background-color: white; border: 1px solid #E0E0E0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%; }
-        .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
+        .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; text-transform: uppercase; }
         .card-resultado-body { padding: 15px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; justify-items: center; }
         .bolinha-roxa { background-color: #5C2D91; color: white; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
     </style>
@@ -180,7 +182,7 @@ if not st.session_state["logged_in"]:
     st.stop()
 
 # ==========================================
-# 5. O APLICATIVO (Layout Analítico)
+# 5. O APLICATIVO (Layout Analítico Estruturado)
 # ==========================================
 
 st.markdown("""
@@ -314,20 +316,43 @@ if df is not None:
         c_volante, c_resumo = st.columns([1, 1], gap="medium")
         
         with c_volante:
-            # === O CABEÇALHO ROXO IDÊNTICO AOS CARDS DE RESULTADOS ===
+            # === CABEÇALHO ROXO DO CARD ===
             st.markdown('<div class="simulador-header">EU TERIA GANHO ALGUM PRÊMIO?</div>', unsafe_allow_html=True)
             
-            # === O CORPO DO CARD (Container nativo estilizado) ===
             with st.container(border=True):
-                # --- QUADRO 1 (O VOLANTE LIMPO E SEM GAIOLAS) ---
-                for linha in range(5):
-                    cols = st.columns(5)
-                    for col_idx in range(5):
-                        num = linha * 5 + col_idx + 1
-                        selecionada = num in st.session_state["palpite_manual"]
-                        tipo_btn = "primary" if selecionada else "secondary"
-                        with cols[col_idx]:
-                            st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
+                # --- QUADRO 1 (A GRADE MÁGICA DE JS) ---
+                # Criamos um marcador para o JS encontrar este bloco
+                st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
+                
+                # LISTAMOS OS BOTÕES SEM COLUNAS! O JS vai transformar isso numa grade perfeita.
+                for num in range(1, 26):
+                    selecionada = num in st.session_state["palpite_manual"]
+                    tipo_btn = "primary" if selecionada else "secondary"
+                    st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
+                
+                # O SCRIPT DE INJEÇÃO
+                components.html("""
+                    <script>
+                        // Esconde a sujeira invisível do componente
+                        const iframe = window.frameElement;
+                        if(iframe){
+                            const iframeContainer = iframe.closest('.element-container');
+                            if(iframeContainer) iframeContainer.style.display = 'none';
+                        }
+                        
+                        // Captura o bloco dos botões e aplica a classe de CSS Grid
+                        const marker = window.parent.document.getElementById('marker-volante');
+                        if(marker){
+                            const markerContainer = marker.closest('.element-container');
+                            if(markerContainer) markerContainer.style.display = 'none';
+                            
+                            const verticalBlock = marker.closest('div[data-testid="stVerticalBlock"]');
+                            if(verticalBlock) {
+                                verticalBlock.classList.add('volante-grid-perfect');
+                            }
+                        }
+                    </script>
+                """, height=0, width=0)
                 
                 # --- QUADRO 2 (TEXTO DE SELEÇÃO) ---
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
