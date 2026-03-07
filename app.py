@@ -6,12 +6,21 @@ import os
 from datetime import datetime
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA
+# 1. TRATAMENTO DO BOTÃO SAIR (HTML -> PYTHON)
+# ==========================================
+# Ouve o clique do link HTML "Sair" na barra superior
+if "logout" in st.query_params:
+    st.session_state["logged_in"] = False
+    st.query_params.clear()
+    st.rerun()
+
+# ==========================================
+# 2. CONFIGURAÇÃO DA PÁGINA
 # ==========================================
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 2. INJEÇÃO DE CSS GLOBAL E HEADER
+# 3. INJEÇÃO DE CSS BLINDADO (COMPATÍVEL COM 100% DOS CELULARES)
 # ==========================================
 st.markdown("""
     <style>
@@ -29,6 +38,24 @@ st.markdown("""
             padding-right: 1rem;
         }
 
+        /* --- BARRA FIORI COM BOTÃO SAIR INTEGRADO --- */
+        .fiori-header-bar {
+            background-color: #354A5F; color: white; padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: Arial, sans-serif; position: fixed;
+            top: 0; left: 0; width: 100vw; z-index: 9999;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+        .header-spacer { margin-top: 50px; }
+        
+        /* Link Sair com visual de botão */
+        .btn-sair-link {
+            color: white !important; text-decoration: none !important; font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.5); padding: 4px 12px; border-radius: 4px;
+            margin-left: 15px; font-size: 14px;
+        }
+        .btn-sair-link:hover { background-color: rgba(255,255,255,0.2); border-color: white; }
+
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
@@ -37,41 +64,31 @@ st.markdown("""
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
 
-        /* --- CSS BLINDADO PARA O VOLANTE (Sem usar o frágil :has) --- */
-        /* Seleciona colunas que fazem parte de um bloco exato de 5 (Ou seja, as linhas do nosso volante) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button {
-            border-radius: 50% !important;
-            height: 40px !important; width: 40px !important;
-            padding: 0 !important; font-size: 14px !important;
-            font-weight: bold !important; margin: auto !important;
-            display: flex !important; justify-content: center !important; align-items: center !important;
+        /* --- O VOLANTE ROXO E RESPONSIVIDADE MOBILE BLINDADA --- */
+        /* Foca estritamente nas 5 primeiras linhas de botões do painel Simulador */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) button {
+            border-radius: 50% !important; 
+            height: 42px !important; width: 42px !important;
+            padding: 0 !important; font-size: 15px !important;
+            margin: auto !important; display: flex !important; justify-content: center !important; align-items: center !important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
         }
-
-        /* Cor Bolinha Desmarcada (Branca com borda roxa) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button[kind="secondary"],
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="secondary"] {
+        /* Bolinha Desmarcada */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) button[kind="secondary"] {
             background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
         }
-
-        /* Cor Bolinha Marcada (Totalmente Roxa - Igual .bolinha-roxa) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button[kind="primary"],
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="primary"] {
-            background-color: #5C2D91 !important; color: white !important; border: none !important;
+        /* Bolinha Marcada */
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) button[kind="primary"] {
+            background-color: #5C2D91 !important; color: white !important; border: 2px solid #5C2D91 !important;
         }
 
-        /* Mágica Responsiva forçada para Mobile */
+        /* Trava Responsiva: Impede que o celular quebre as 5 bolinhas em uma lista */
         @media (max-width: 640px) {
-            /* Transforma os blocos do simulador em linhas horizontais à força */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
-                display: flex !important; flex-direction: row !important; flex-wrap: wrap !important;
-                gap: 2px !important; justify-content: center !important;
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) div[data-testid="stHorizontalBlock"] {
+                flex-direction: row !important; flex-wrap: nowrap !important; justify-content: center !important;
             }
-            /* Garante que as 5 bolinhas caibam lado a lado (18% de largura cada) */
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5),
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
-                flex: 0 0 18% !important; padding: 1px !important; min-width: 0 !important;
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-of-type > div[data-testid="stVerticalBlock"] > div.element-container:nth-of-type(-n+5) div[data-testid="column"] {
+                min-width: 18% !important; flex: 0 0 18% !important; padding: 2px !important;
             }
         }
         
@@ -104,7 +121,7 @@ st.markdown("""
 ARQUIVO_BASE = "banco_dados.csv"
 
 # ==========================================
-# 3. CONTROLE DE SESSÃO E LOGIN
+# 4. CONTROLE DE SESSÃO E LOGIN
 # ==========================================
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
@@ -162,42 +179,14 @@ if not st.session_state["logged_in"]:
     st.stop()
 
 # ==========================================
-# 4. O APLICATIVO (Layout Analítico)
+# 5. O APLICATIVO (Layout Analítico)
 # ==========================================
 
-# --- BOTÃO SAIR BLINDADO (Flutua exatamente na barra Fiori) ---
-st.markdown("""
-    <style>
-        /* Pega o segundo container renderizado (que será o botão Sair) e posiciona no topo direito */
-        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) {
-            position: fixed; top: 10px; right: 20px; z-index: 1000; width: auto;
-        }
-        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button {
-            background-color: transparent !important; border: 1px solid rgba(255,255,255,0.5) !important;
-            color: white !important; padding: 2px 15px !important; height: 32px !important; line-height: 1 !important;
-        }
-        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button:hover {
-            background-color: rgba(255,255,255,0.2) !important; border-color: white !important;
-        }
-        .fiori-header-bar {
-            background-color: #354A5F; color: white; padding: 10px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            font-family: Arial, sans-serif; position: fixed; top: 0; left: 0; width: 100vw; z-index: 998;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-        }
-        .header-spacer { margin-top: 50px; }
-    </style>
-""", unsafe_allow_html=True)
-
-# O BOTÃO DEVE ESTAR AQUI PARA O CSS NTH-CHILD(2) FUNCIONAR
-if st.button("Sair"):
-    st.session_state["logged_in"] = False
-    st.rerun()
-
+# Barra superior com o botão Sair embutido no HTML
 st.markdown("""
     <div class="fiori-header-bar">
         <div><span style="color:#6CB2EB;">💎 Gerador VIP</span> | Painel Simulador Lotofácil</div>
-        <div>🔍 🔔 ⚙️ | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        <div>🔍 🔔 ⚙️ | <a href="/?logout=true" target="_self" class="btn-sair-link">Sair 🚪</a></div>
     </div>
     <div class="header-spacer"></div>
 """, unsafe_allow_html=True)
@@ -329,7 +318,7 @@ if df is not None:
             c_volante, c_resumo = st.columns([1, 1.2])
             
             with c_volante:
-                # Volante (A mágica do CSS acontece aqui)
+                # Volante (Mágica responsiva reescrita)
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
@@ -349,12 +338,11 @@ if df is not None:
                 
                 c_btn3, c_btn4 = st.columns([4, 1])
                 with c_btn3: salvar_db = st.button("💾 Gravar no Banco", use_container_width=True)
-                with c_btn4: st.button("🗑️", on_click=limpar_volante, help="Limpar volante")
+                with c_btn4: st.button("🗑️", on_click=limpar_volante, help="Limpar")
 
             with c_resumo:
                 st.markdown("<h5 style='text-align:center; color:#32363A;'>Resumo do Palpite</h5>", unsafe_allow_html=True)
                 
-                # AÇÃO 1: VERIFICAR HISTÓRICO
                 if verificar and len(selecionadas) == 15:
                     dezenas_cols = [c for c in df.columns if "Dezena" in c]
                     if not dezenas_cols: dezenas_cols = df.columns[-15:]
@@ -381,7 +369,6 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # AÇÃO 2: VALIDAR NAS LISTAS
                 elif validar_listas and len(selecionadas) == 15:
                     if not st.session_state.get("gerado"):
                         st.warning("Gere as combinações nas tabelas ao lado primeiro!")
@@ -410,7 +397,6 @@ if df is not None:
                         elif melhor_acerto >= 11: st.info(f"👍 **CRUZAMENTO POSITIVO:** {mensagem}")
                         else: st.error(f"📉 **FALHA:** Maior acerto nas listas geradas: {melhor_acerto}.")
 
-                # AÇÃO 3: GRAVAR NO BANCO (COM ATUALIZAÇÃO EM TEMPO REAL)
                 elif salvar_db and len(selecionadas) == 15:
                     dezenas_cols = [c for c in df.columns if "Dezena" in c]
                     if not dezenas_cols: dezenas_cols = df.columns[-15:]
@@ -424,7 +410,7 @@ if df is not None:
                             break
                     
                     if ja_sorteado:
-                        st.error("🚨 **Este jogo já existe no banco de dados histórico!** Gravação bloqueada.")
+                        st.error("🚨 **Este jogo já existe no banco histórico!**")
                     else:
                         conc_col = next((c for c in df.columns if 'Concurso' in c or 'Sorteio' in c or 'N°' in c), None)
                         data_col = next((c for c in df.columns if 'Data' in c), None)
@@ -442,7 +428,7 @@ if df is not None:
                         df_novo = pd.concat([df, pd.DataFrame([novo_registro])], ignore_index=True)
                         df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
                         st.cache_data.clear()
-                        st.success("✅ **Jogo Gravado com Sucesso! Atualizando painel...**")
+                        st.success("✅ **Jogo Gravado!**")
                         st.rerun() 
 
                 elif (verificar or validar_listas or salvar_db):
