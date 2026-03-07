@@ -40,26 +40,39 @@ st.markdown("""
         footer {visibility: hidden;}
         header {visibility: hidden;}
         [data-testid="stHeader"] {display: none;}
+        
         .block-container { padding-top: 0rem !important; padding-bottom: 2rem; max-width: 95% !important; padding-left: 1rem; padding-right: 1rem; }
         [data-testid="stForm"] { border: none !important; padding: 0 !important; }
+        
         .fiori-header-bar { background-color: #354A5F; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-family: Arial, sans-serif; position: fixed; top: 0; left: 0; width: 100vw; z-index: 9999; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
         .header-left { display: flex; align-items: center; font-size: 15px; }
         .header-right { display: flex; align-items: center; gap: 20px; font-size: 15px; }
         .btn-sair-link { color: white !important; text-decoration: none !important; font-weight: bold; border: 1px solid rgba(255,255,255,0.5); padding: 5px 16px; border-radius: 4px; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .btn-sair-link:hover { background-color: rgba(255,255,255,0.2); border-color: white; }
         .header-spacer { margin-top: 55px; }
+        
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
+        
+        /* --- ESTILO ISOLADO DO CARD DO SIMULADOR --- */
         .simulador-header { background-color: #5C2D91; color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 14px; border-radius: 8px 8px 0 0; margin-bottom: -15px; position: relative; z-index: 10; }
-        div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 0 0 8px 8px !important; border: 1px solid #E0E0E0 !important; border-top: none !important; background-color: white !important; padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important; }
+        .simulador-card-style {
+            border-radius: 0 0 8px 8px !important; border: 1px solid #E0E0E0 !important;
+            border-top: none !important; background-color: white !important;
+            padding-top: 20px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+        }
+
+        /* --- A GRADE MÁGICA 5x5 --- */
         .volante-grid-perfect { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 12px !important; justify-content: center !important; justify-items: center !important; max-width: 320px !important; margin: 0 auto !important; padding: 10px 0 !important; }
         .volante-grid-perfect .element-container button { border-radius: 50% !important; height: 44px !important; width: 44px !important; padding: 0 !important; font-size: 15px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; align-items: center !important; box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: 0.1s !important; margin: 0 !important; }
         .volante-grid-perfect .element-container button[kind="secondary"] { background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important; }
         .volante-grid-perfect .element-container button[kind="primary"] { background-color: #5C2D91 !important; color: white !important; border: none !important; }
+        
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
+        
         .faixa-resultados { background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333; margin-top: 30px; margin-bottom: 15px; border-radius: 4px; }
         .card-resultado { background-color: white; border: 1px solid #E0E0E0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%; }
         .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; text-transform: uppercase; }
@@ -97,7 +110,7 @@ def limpar_volante():
     st.session_state["palpite_manual"] = set()
 
 # ==========================================
-# 5. TELA DE LOGIN 
+# 5. TELA DE LOGIN LIMPÍSSIMA
 # ==========================================
 if not st.session_state["logged_in"]:
     st.markdown("""
@@ -161,7 +174,7 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     fibonacci = {1, 2, 3, 5, 8, 13, 21}
     lista_geral, lista_frias, lista_diamante, lista_reversa = [], [], [], []
 
-    # Setup Motores
+    # Setup Motores Iniciais
     if motor_id == 1:
         all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
         counts = Counter(all_numbers)
@@ -188,18 +201,15 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
             p_0_to_1 = (t_0_1 / total_0) if total_0 > 0 else 0
             prob_markov[num] = (p_1_to_1 * 100) if num in ultimo_sorteio else (p_0_to_1 * 100)
     elif motor_id == 4:
-        # MOTOR 4: ENTROPIA DE SHANNON
         all_numbers = df_dados[dezenas_cols].dropna().astype(int).values.flatten()
         counts = Counter(all_numbers)
         prob_entropia = {d: counts.get(d, 0) / total_draws for d in range(1, 26)}
-        
         def calc_entropia(combinacao):
             return -sum(prob_entropia[d] * math.log2(prob_entropia[d]) for d in combinacao if prob_entropia.get(d, 0) > 0)
-            
-        # Descobre a "Assinatura Natural" histórica
         hist_entropias = [calc_entropia(draw) for draw in past_draws]
-        entropia_ideal = sum(hist_entropias) / len(hist_entropias) if hist_entropies else 0
+        entropia_ideal = sum(hist_entropias) / len(hist_entropias) if hist_entropias else 0
 
+    # Iteração Bruta
     for comb in itertools.combinations(range(1, 26), n_dezenas):
         f_comb = frozenset(comb)
         impares = sum(1 for d in f_comb if d % 2 != 0)
@@ -216,7 +226,6 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
         eh_valido_basico = (impares in imp_d) and (pri_d[0] <= qtd_primos <= pri_d[-1])
         eh_ouro = eh_valido_basico and (mol_d[0] <= qtd_moldura <= mol_d[-1]) and (fib_d[0] <= qtd_fibo <= fib_d[-1]) and (soma_d[0] <= soma_total <= soma_d[1])
 
-        # Pontuações
         if motor_id == 1:
             score = sum(counts[d] for d in f_comb)
             score_frias_val = (50000 - score) / 100.0
@@ -231,7 +240,6 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
             score_frias_val = score_val
         elif motor_id == 4:
             H_comb = calc_entropia(f_comb)
-            # Aproximação da Entropia Ideal (100 pts é a perfeição)
             distancia = abs(H_comb - entropia_ideal)
             score_val = max(0, 100.0 - (distancia * 50.0)) 
             score_frias_val = score_val
@@ -247,7 +255,7 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     lista_diamante.sort(key=lambda x: x[0], reverse=True)
     lista_geral.sort(key=lambda x: x[0], reverse=True) 
     lista_reversa.sort(key=lambda x: x[0], reverse=True)  
-    lista_frias.sort(key=lambda x: x[0], reverse=(motor_id in [1, 4])) # No M1 e M4 frias inverte
+    lista_frias.sort(key=lambda x: x[0], reverse=(motor_id in [1, 4])) 
 
     def formatar(lista): 
         fator = 10.0 if motor_id == 2 else 1.0
@@ -256,12 +264,11 @@ def executar_logica_motora(df_dados, n_dezenas, motor_id):
     return pd.DataFrame(formatar(lista_diamante[:5000])), pd.DataFrame(formatar(lista_frias[:5000])), pd.DataFrame(formatar(lista_geral[:5000])), pd.DataFrame(formatar(lista_reversa[:5000]))
 
 # ------------------------------------------
-# TRABALHADOR FANTASMA & RADAR
+# TRABALHADOR FANTASMA & MEMÓRIA
 # ------------------------------------------
 def worker_fantasma_calcula_tudo(df_dados, tamanho_banco_atual):
     pasta_cache = "memoria_calculos"
     if not os.path.exists(pasta_cache): os.makedirs(pasta_cache)
-    # AGORA COM 4 MOTORES
     for motor_id in [1, 2, 3, 4]:
         for n_dez in [15, 16, 17]:
             arq_meta = f"{pasta_cache}/M{motor_id}_{n_dez}_meta.txt"
@@ -384,7 +391,6 @@ if df is not None:
                     st.session_state["N_GERADO"] = N_DEZENAS
                     st.session_state["gerado"] = True
                     st.session_state["MOTOR_GERADO"] = MOTOR_ESCOLHIDO
-                    # Força uma atualização leve na tela para o Radar avançar mais rápido
                     st.rerun()
 
         cfg_col = {"Sel": st.column_config.CheckboxColumn("Sel", default=False)}
@@ -401,23 +407,20 @@ if df is not None:
         
         with c_volante:
             st.markdown('<div class="simulador-header">EU TERIA GANHO ALGUM PRÊMIO?</div>', unsafe_allow_html=True)
+            
+            # --- CARD DO SIMULADOR SEGURO ---
             with st.container(border=True):
+                st.markdown('<div id="marker-sim-card"></div>', unsafe_allow_html=True)
+                
+                # --- CAIXA FORTE DO VOLANTE (SÓ BOLINHAS AQUI DENTRO) ---
                 with st.container():
                     st.markdown('<div id="marker-volante"></div>', unsafe_allow_html=True)
                     for num in range(1, 26):
                         selecionada = num in st.session_state["palpite_manual"]
                         tipo_btn = "primary" if selecionada else "secondary"
                         st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
-                    components.html("""
-                        <script>
-                            const marker = window.parent.document.getElementById('marker-volante');
-                            if(marker){
-                                const verticalBlock = marker.closest('div[data-testid="stVerticalBlock"]');
-                                if(verticalBlock) verticalBlock.classList.add('volante-grid-perfect');
-                            }
-                        </script>
-                    """, height=0, width=0)
                 
+                # --- BOTÕES DE AÇÃO BLINDADOS FORA DA GRADE ---
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
                 st.markdown(f"<p style='text-align:center; font-size:13px; color:#6A6D70; padding-top: 15px; border-top: 1px solid #E0E0E0;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
@@ -557,3 +560,37 @@ if df is not None:
 <div class="card-resultado-body">{bolinhas_html}</div>
 </div>"""
         with colunas_cards[i]: st.markdown(html_card, unsafe_allow_html=True)
+
+# ------------------------------------------
+# INJEÇÃO JAVASCRIPT SEGURA (ISOLADA)
+# ------------------------------------------
+components.html("""
+    <script>
+        // 1. Esconde o iframe invisível
+        const iframe = window.frameElement;
+        if(iframe){
+            const iframeContainer = iframe.closest('.element-container');
+            if(iframeContainer) iframeContainer.style.display = 'none';
+        }
+        
+        // 2. Aplica a Grade EXATAMENTE no bloco das 25 dezenas
+        const gridMarker = window.parent.document.getElementById('marker-volante');
+        if(gridMarker){
+            const markerContainer = gridMarker.closest('.element-container');
+            if(markerContainer) {
+                markerContainer.style.display = 'none';
+                const verticalBlock = markerContainer.parentNode; // Trava a fuga do CSS!
+                if(verticalBlock) verticalBlock.classList.add('volante-grid-perfect');
+            }
+        }
+        
+        // 3. Pinta o Container do Simulador sem vazar pro Login
+        const cardMarker = window.parent.document.getElementById('marker-sim-card');
+        if(cardMarker) {
+            const cardMarkerContainer = cardMarker.closest('.element-container');
+            if(cardMarkerContainer) cardMarkerContainer.style.display = 'none';
+            const cardWrapper = cardMarker.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
+            if(cardWrapper) cardWrapper.classList.add('simulador-card-style');
+        }
+    </script>
+""", height=0, width=0)
