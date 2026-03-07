@@ -102,7 +102,7 @@ st.markdown("""
         /* Mantém as colunas 5x5 equilibradas */
         div[data-testid="column"]:first-child:nth-last-child(5),
         div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
-            min-width: 18% !important; flex: 1 1 18% !important; padding: 2px !important;
+            min-width: 15% !important; flex: 1 1 15% !important; padding: 2px !important;
         }
 
         /* --- BOTÕES DE AÇÃO --- */
