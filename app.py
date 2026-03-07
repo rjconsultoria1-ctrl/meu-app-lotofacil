@@ -6,12 +6,30 @@ import os
 from datetime import datetime
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA
+# 1. TRATAMENTO DO BOTÃO SAIR (Fixo na Barra)
+# ==========================================
+# Captura o clique do link Sair nativo da barra HTML para deslogar
+try:
+    params = st.query_params
+    if "logout" in params:
+        st.session_state["logged_in"] = False
+        st.query_params.clear()
+        st.rerun()
+except AttributeError:
+    # Fallback caso seu Streamlit seja uma versão mais antiga
+    params = st.experimental_get_query_params()
+    if "logout" in params:
+        st.session_state["logged_in"] = False
+        st.experimental_set_query_params()
+        st.rerun()
+
+# ==========================================
+# 2. CONFIGURAÇÃO DA PÁGINA
 # ==========================================
 st.set_page_config(page_title="Gerador VIP | SAP", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
-# 2. CSS BLINDADO (A "TABELA INVISÍVEL" E A BARRA FIORI)
+# 3. CSS BLINDADO (Tabela Invisível e Cores)
 # ==========================================
 st.markdown("""
     <style>
@@ -29,116 +47,82 @@ st.markdown("""
             padding-right: 1rem;
         }
 
-        /* --- O BOTÃO SAIR NO TOPO DIREITO --- */
-        /* O botão Sair é o 2º elemento renderizado na tela. Vamos cravá-lo no topo direito! */
-        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) {
-            position: fixed !important;
-            top: 10px !important;
-            right: 20px !important;
-            z-index: 99999 !important;
-            width: auto !important;
-        }
-        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button {
-            background-color: transparent !important;
-            color: white !important;
-            border: 1px solid rgba(255,255,255,0.6) !important;
-            padding: 2px 15px !important;
-            height: 32px !important;
-            font-size: 14px !important;
-            border-radius: 4px !important;
-        }
-        div[data-testid="stAppViewBlockContainer"] > div.element-container:nth-child(2) button:hover {
-            background-color: rgba(255,255,255,0.2) !important; border-color: white !important;
-        }
-
-        /* --- BARRA FIORI AZUL --- */
+        /* --- BARRA FIORI COM BOTÃO SAIR --- */
         .fiori-header-bar {
-            background-color: #354A5F; color: white; padding: 10px 20px;
+            background-color: #354A5F; color: white; padding: 12px 20px;
             display: flex; justify-content: space-between; align-items: center;
             font-family: Arial, sans-serif; position: fixed;
-            top: 0; left: 0; width: 100vw; z-index: 9998;
+            top: 0; left: 0; width: 100vw; z-index: 9999;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
         .header-spacer { margin-top: 50px; }
         
+        /* O design do botão Sair fixado na barra */
+        .btn-sair-link {
+            color: white !important; text-decoration: none !important; font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.5); padding: 4px 15px; border-radius: 4px;
+            margin-left: 15px; font-size: 14px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-sair-link:hover { background-color: rgba(255,255,255,0.2); border-color: white; }
+
         .page-title-section { padding: 10px 0; border-bottom: 1px solid #D9D9D9; margin-bottom: 15px; }
         .header-title { font-size: 22px; font-weight: bold; color: #32363A; }
         .header-subtitle { font-size: 14px; color: #6A6D70; }
 
+        /* --- A MÁGICA DA TABELA INVISÍVEL (QUADRO 1) --- */
+        /* Captura EXATAMENTE os blocos que têm 5 colunas (Nosso volante) e os tranca numa grade de 19% cada */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5),
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
+            display: inline-block !important; /* Antídoto contra o celular empilhar tudo */
+            width: 19% !important;
+            min-width: 19% !important;
+            flex: 0 0 19% !important;
+            padding: 0 !important;
+            margin: 0 0.4% !important;
+            vertical-align: middle;
+        }
+
+        /* O visual perfeito das bolinhas do volante */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button {
+            border-radius: 50% !important;
+            height: 44px !important; width: 44px !important;
+            padding: 0 !important; font-size: 15px !important; font-weight: bold !important;
+            margin: 5px auto !important;
+            display: flex !important; justify-content: center !important; align-items: center !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+            transition: 0.1s;
+        }
+        
+        /* Cor da Bolinha Desmarcada (Branca com borda cinza, idêntico ao seu print) */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button[kind="secondary"],
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="secondary"] {
+            background-color: white !important; color: #333 !important; border: 1px solid #D9D9D9 !important;
+        }
+        /* Cor da Bolinha Marcada (Roxa, texto branco) */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) button[kind="primary"],
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] button[kind="primary"] {
+            background-color: #5C2D91 !important; color: white !important; border: none !important;
+        }
+
+        /* --- BOTÕES DOS QUADROS 2 E 3 --- */
         .stButton>button { border-radius: 4px; font-weight: bold; }
         .stButton>button[kind="primary"] { background-color: #5C2D91; border-color: #5C2D91; color: white; }
         .stButton>button[kind="primary"]:hover { background-color: #4A1E7A; border-color: #4A1E7A; }
-
-        /* --- A MÁGICA DA TABELA INVISÍVEL NO VOLANTE --- */
-        /* Trava as linhas do volante para não quebrarem e agirem como uma grade */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important; /* A trava de segurança! */
-            gap: 6px !important;
-            justify-content: center !important;
-            margin-bottom: 6px !important;
-        }
-        /* Trava as colunas para não expandirem */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            width: auto !important;
-            flex: 0 0 auto !important;
-            min-width: 0 !important;
-        }
-
-        /* FORMATANDO EXATAMENTE AS 25 BOLINHAS DO VOLANTE */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child > div[data-testid="stVerticalBlock"] > div.element-container:nth-child(-n+5) button {
-            border-radius: 50% !important;
-            height: 42px !important; width: 42px !important;
-            padding: 0 !important; font-size: 15px !important;
-            font-weight: bold !important;
-            display: flex !important; justify-content: center !important; align-items: center !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
-        }
-        /* Cor Desmarcada */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child > div[data-testid="stVerticalBlock"] > div.element-container:nth-child(-n+5) button[kind="secondary"] {
-            background-color: white !important; color: #5C2D91 !important; border: 2px solid #5C2D91 !important;
-        }
-        /* Cor Marcada */
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child > div[data-testid="stVerticalBlock"] > div.element-container:nth-child(-n+5) button[kind="primary"] {
-            background-color: #5C2D91 !important; color: white !important; border: none !important;
-        }
         
         /* --- CARDS DE RESULTADOS --- */
-        .faixa-resultados {
-            background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333;
-            margin-top: 30px; margin-bottom: 15px; border-radius: 4px;
-        }
-        .card-resultado {
-            background-color: white; border: 1px solid #E0E0E0; border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%;
-        }
-        .card-resultado-header {
-            background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold;
-            display: flex; justify-content: space-between; font-size: 14px;
-        }
-        .card-resultado-body {
-            padding: 15px; display: grid; grid-template-columns: repeat(5, 1fr);
-            gap: 12px; justify-items: center;
-        }
-        .bolinha-roxa {
-            background-color: #5C2D91; color: white; width: 38px; height: 38px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; font-weight: bold; font-size: 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-        }
+        .faixa-resultados { background-color: #D9D9D9; padding: 10px 20px; font-weight: bold; color: #333; margin-top: 30px; margin-bottom: 15px; border-radius: 4px; }
+        .card-resultado { background-color: white; border: 1px solid #E0E0E0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; width: 100%; }
+        .card-resultado-header { background-color: #5C2D91; color: white; padding: 12px 18px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
+        .card-resultado-body { padding: 15px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; justify-items: center; }
+        .bolinha-roxa { background-color: #5C2D91; color: white; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
     </style>
 """, unsafe_allow_html=True)
-
-# O BOTÃO SAIR DEVE FICAR AQUI NO TOPO (Para o CSS pegar ele e levar para a barra azul)
-if st.button("Sair 🚪"):
-    st.session_state["logged_in"] = False
-    st.rerun()
 
 ARQUIVO_BASE = "banco_dados.csv"
 
 # ==========================================
-# 3. CONTROLE DE SESSÃO E LOGIN
+# 4. CONTROLE DE SESSÃO E LOGIN
 # ==========================================
 if "logged_in" not in st.session_state: st.session_state["logged_in"] = False
 if "palpite_manual" not in st.session_state: st.session_state["palpite_manual"] = set()
@@ -196,13 +180,14 @@ if not st.session_state["logged_in"]:
     st.stop()
 
 # ==========================================
-# 4. O APLICATIVO (Layout Analítico)
+# 5. O APLICATIVO (Layout Analítico Estruturado)
 # ==========================================
 
+# A Barra com o Botão Sair integrado na estrutura
 st.markdown("""
     <div class="fiori-header-bar">
         <div><span style="color:#6CB2EB;">💎 Gerador VIP</span> | Painel Simulador Lotofácil</div>
-        <div>🔍 🔔 ⚙️ | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        <div>🔍 🔔 ⚙️ <a href="/?logout=true" target="_self" class="btn-sair-link">Sair 🚪</a></div>
     </div>
     <div class="header-spacer"></div>
 """, unsafe_allow_html=True)
@@ -297,7 +282,7 @@ with st.expander("⚙️ Gestão de Base de Dados (Master Data)"):
 st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
 
 # ==========================================
-# DIVISÃO DA TELA: Tabelas (Esq) | Simulador (Dir)
+# A GRANDE DIVISÃO DA TELA: Esquema exato do Wireframe
 # ==========================================
 if df is not None:
     col_esq, col_dir = st.columns([1.2, 1], gap="large")
@@ -331,10 +316,11 @@ if df is not None:
         with caixa_simulador:
             st.markdown("<div style='background-color:#5C2D91; color:white; padding:12px; font-weight:bold; margin:-1rem -1rem 1.5rem -1rem;'>EU TERIA GANHO ALGUM PRÊMIO?</div>", unsafe_allow_html=True)
             
-            c_volante, c_resumo = st.columns([1, 1.2])
+            # Aqui é onde ocorre o box-model do seu desenho (Quadros Esquerda X Quadro Direita)
+            c_volante, c_resumo = st.columns([1, 1], gap="medium")
             
             with c_volante:
-                # O Volante encapsulado na sua "Tabela Invisível" (A mágica do CSS atua aqui)
+                # --- QUADRO 1 (A TABELA INVISÍVEL 5x5) ---
                 for linha in range(5):
                     cols = st.columns(5)
                     for col_idx in range(5):
@@ -344,20 +330,22 @@ if df is not None:
                         with cols[col_idx]:
                             st.button(f"{num:02d}", key=f"btn_{num}", type=tipo_btn, on_click=toggle_dezena, args=(num,))
                 
+                # --- QUADRO 2 (TEXTO DE SELEÇÃO) ---
                 selecionadas = sorted(list(st.session_state["palpite_manual"]))
-                st.markdown(f"<p style='text-align:center; font-size:12px; color:#6A6D70; margin-top:10px;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; font-size:13px; color:#6A6D70; margin-top:15px; border-bottom: 1px solid #E0E0E0; padding-bottom:10px;'>Números selecionados: <b>{len(selecionadas)}/15</b></p>", unsafe_allow_html=True)
                 
-                # BOTOES DE AÇÃO
+                # --- QUADRO 3 (BOTÕES DE AÇÃO) ---
                 c_btn1, c_btn2 = st.columns(2)
                 with c_btn1: verificar = st.button("Verificar Histórico", use_container_width=True, type="primary")
                 with c_btn2: validar_listas = st.button("Validar nas Listas", use_container_width=True)
                 
                 c_btn3, c_btn4 = st.columns([4, 1])
                 with c_btn3: salvar_db = st.button("💾 Gravar no Banco", use_container_width=True)
-                with c_btn4: st.button("🗑️", on_click=limpar_volante, help="Limpar")
+                with c_btn4: st.button("🗑️", on_click=limpar_volante, help="Limpar volante")
 
             with c_resumo:
-                st.markdown("<h5 style='text-align:center; color:#32363A;'>Resumo do Palpite</h5>", unsafe_allow_html=True)
+                # --- QUADRO 4 (RESUMO DOS PALPITES) ---
+                st.markdown("<h5 style='text-align:center; color:#32363A; margin-top:0;'>Resumo do Palpite</h5>", unsafe_allow_html=True)
                 
                 if verificar and len(selecionadas) == 15:
                     dezenas_cols = [c for c in df.columns if "Dezena" in c]
@@ -444,7 +432,7 @@ if df is not None:
                         df_novo = pd.concat([df, pd.DataFrame([novo_registro])], ignore_index=True)
                         df_novo.to_csv(ARQUIVO_BASE, index=False, sep=';')
                         st.cache_data.clear()
-                        st.success("✅ **Jogo Gravado!**")
+                        st.success("✅ **Jogo Gravado! Atualizando base...**")
                         st.rerun() 
 
                 elif (verificar or validar_listas or salvar_db):
